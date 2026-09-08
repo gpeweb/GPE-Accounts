@@ -1,0 +1,2331 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>General Power Engineering LTD | Accounts</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Sora:wght@600;700;800&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root{
+  --teal-900:#0b3b46;
+  --teal-700:#0f5c6b;
+  --teal-500:#157a8c;
+  --lime-500:#7cb928;
+  --lime-400:#96d13a;
+  --amber-500:#f5a623;
+  --orange-600:#e8791a;
+  --red-600:#c0392b;
+  --ink-900:#16232a;
+  --ink-600:#4a5b63;
+  --ink-400:#7c8b92;
+  --paper:#f4f7f6;
+  --paper-card:#ffffff;
+  --line:#e2e8e6;
+  --ok:#2e8b57;
+  --bad:#c0392b;
+}
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:'Hind Siliguri','Segoe UI',sans-serif;
+  background:var(--paper);
+  color:var(--ink-900);
+  min-height:100vh;
+}
+h1,h2,h3,.display{font-family:'Sora','Hind Siliguri',sans-serif;}
+.num{font-family:'IBM Plex Mono','Hind Siliguri',monospace; font-variant-numeric:tabular-nums;}
+button{font-family:inherit; cursor:pointer;}
+a{color:inherit;}
+
+/* ===== Layout ===== */
+#app{display:flex; min-height:100vh;}
+.sidebar{
+  width:250px; flex-shrink:0;
+  background:linear-gradient(180deg,var(--teal-900) 0%, #0a2e37 100%);
+  color:#eaf3f2;
+  display:flex; flex-direction:column;
+  position:sticky; top:0; height:100vh; overflow-y:auto;
+}
+.brand{
+  padding:22px 20px 16px 20px;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+  display:flex; align-items:center; gap:12px;
+}
+.brand-mark{width:38px;height:38px;flex-shrink:0;}
+.brand-text{line-height:1.15;}
+.brand-text .name{font-family:'Sora',sans-serif; font-weight:700; font-size:14px; letter-spacing:.2px;}
+.brand-text .tag{font-size:10.5px; color:var(--lime-400); font-weight:600; letter-spacing:.4px; margin-top:2px;}
+
+.nav{padding:14px 10px; flex:1;}
+.nav-group-label{font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:#7fa3a3; padding:14px 12px 6px;}
+.nav-item{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px; border-radius:9px; margin-bottom:2px;
+  font-size:14px; font-weight:500; color:#cfe4e2;
+  border-left:3px solid transparent;
+  transition:background .15s, color .15s;
+}
+.nav-item:hover{background:rgba(255,255,255,0.06); color:#fff;}
+.nav-item.active{background:rgba(124,185,40,0.16); color:#fff; border-left-color:var(--lime-500);}
+.nav-item .ic{width:18px; text-align:center; opacity:.9;}
+.sidebar-foot{padding:14px 18px; font-size:11px; color:#6f9494; border-top:1px solid rgba(255,255,255,.08);}
+.user-badge{padding:14px 18px; border-top:1px solid rgba(255,255,255,.08);}
+.user-badge .ub-name{font-weight:700; font-size:13.5px; color:#fff;}
+.user-badge .ub-role{font-size:11px; color:var(--lime-400); font-weight:600; margin-top:2px;}
+
+.main{flex:1; min-width:0; display:flex; flex-direction:column;}
+.topbar{
+  min-height:64px; background:var(--paper-card); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; justify-content:space-between; padding:10px 26px;
+  position:sticky; top:0; z-index:20; flex-wrap:wrap; gap:10px;
+}
+.topbar h1{font-size:19px; margin:0; font-weight:700; color:var(--ink-900);}
+.topbar .sub{font-size:12.5px; color:var(--ink-400); margin-top:1px;}
+.topbar-actions{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.topbar-left{display:flex; align-items:center; gap:10px;}
+
+.menu-toggle{
+  display:none; background:none; border:1px solid var(--line); border-radius:9px;
+  font-size:19px; color:var(--ink-900); padding:6px 11px; align-items:center; justify-content:center;
+  flex-shrink:0;
+}
+.sidebar-overlay{display:none; position:fixed; inset:0; background:rgba(11,20,24,0.5); z-index:45;}
+.sidebar-overlay.show{display:block;}
+
+.content{padding:24px 26px 60px; max-width:1300px; width:100%; margin:0 auto;}
+
+/* ===== Responsive: tablet & mobile ===== */
+@media(max-width:960px){
+  .sidebar{
+    position:fixed; left:0; top:0; z-index:50;
+    transform:translateX(-100%);
+    transition:transform .22s ease;
+    width:82vw; max-width:280px;
+  }
+  .sidebar.open{transform:translateX(0); box-shadow:0 0 50px rgba(0,0,0,.35);}
+  .menu-toggle{display:inline-flex;}
+  .content{padding:18px 14px 50px;}
+  .topbar{padding:10px 14px;}
+  .topbar h1{font-size:17px;}
+}
+@media(max-width:600px){
+  .topbar{flex-direction:column; align-items:flex-start;}
+  .topbar-actions{width:100%;}
+  .topbar-actions .btn, .topbar-actions label.btn{flex:1 1 auto; justify-content:center;}
+  .grid-4, .grid-3, .grid-2{grid-template-columns:1fr;}
+  .stat-card .value{font-size:21px;}
+  .field-row{grid-template-columns:1fr;}
+  .filter-bar{flex-direction:column; align-items:stretch;}
+  .filter-bar select, .filter-bar input{width:100%;}
+  .proj-nums{flex-wrap:wrap; gap:12px 18px;}
+  .modal{max-width:100%; border-radius:14px;}
+  table{font-size:12.5px;}
+  thead th, tbody td{padding:9px 10px;}
+}
+@media(max-width:400px){
+  .brand-text .name{font-size:12.5px;}
+  .lang-toggle button{padding:6px 9px; font-size:11.5px;}
+}
+
+/* ===== Lang toggle ===== */
+.lang-toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden;}
+.lang-toggle button{
+  padding:7px 12px; border:none; background:#fff; font-size:12.5px; font-weight:700; color:var(--ink-600);
+}
+.lang-toggle button.active{background:var(--teal-700); color:#fff;}
+
+/* ===== Buttons ===== */
+.btn{
+  display:inline-flex; align-items:center; gap:7px;
+  padding:9px 16px; border-radius:9px; border:1px solid transparent;
+  font-size:13.5px; font-weight:600; background:var(--paper-card); color:var(--ink-900);
+  border:1px solid var(--line);
+  transition:transform .08s, box-shadow .15s;
+}
+.btn:hover{box-shadow:0 2px 10px rgba(15,92,107,0.08);}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--teal-700); color:#fff; border-color:var(--teal-700);}
+.btn-primary:hover{background:var(--teal-500);}
+.btn-accent{background:var(--lime-500); color:#0b3b46; border-color:var(--lime-500);}
+.btn-excel{background:#1d7a46; color:#fff; border-color:#1d7a46;}
+.btn-excel:hover{background:#249456;}
+.btn-danger{background:#fff; color:var(--red-600); border-color:#f2c9c4;}
+.btn-danger:hover{background:#fdf2f1;}
+.btn-ghost{background:transparent; border-color:transparent; color:var(--ink-600);}
+.btn-sm{padding:6px 11px; font-size:12.5px; border-radius:7px;}
+.btn:disabled{opacity:.45; cursor:not-allowed;}
+
+/* ===== Cards / Grid ===== */
+.grid{display:grid; gap:16px;}
+.grid-4{grid-template-columns:repeat(4,1fr);}
+.grid-3{grid-template-columns:repeat(3,1fr);}
+.grid-2{grid-template-columns:repeat(2,1fr);}
+@media(max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);} .grid-3{grid-template-columns:repeat(2,1fr);}}
+@media(max-width:680px){.grid-4,.grid-3,.grid-2{grid-template-columns:1fr;}}
+
+.card{
+  background:var(--paper-card); border:1px solid var(--line); border-radius:14px;
+  padding:18px 20px;
+}
+.stat-card{position:relative; overflow:hidden;}
+.stat-card .label{font-size:12px; color:var(--ink-400); font-weight:600; letter-spacing:.3px;}
+.stat-card .value{font-size:25px; font-weight:700; margin-top:6px; font-family:'IBM Plex Mono',monospace;}
+.stat-card .delta{font-size:11.5px; margin-top:6px; font-weight:600;}
+.stat-card .bolt{position:absolute; right:-10px; top:-14px; width:70px; height:110px; opacity:.08; transform:rotate(8deg);}
+.stat-teal{border-top:3px solid var(--teal-500);}
+.stat-lime{border-top:3px solid var(--lime-500);}
+.stat-amber{border-top:3px solid var(--amber-500);}
+.stat-red{border-top:3px solid var(--red-600);}
+
+.section-title{display:flex; align-items:center; justify-content:space-between; margin:28px 0 12px; flex-wrap:wrap; gap:8px;}
+.section-title h2{font-size:16px; margin:0; font-weight:700;}
+.section-title .eyebrow{font-size:10.5px; text-transform:uppercase; letter-spacing:1px; color:var(--lime-500); font-weight:700; margin-bottom:3px;}
+
+/* ===== Table ===== */
+.table-wrap{background:var(--paper-card); border:1px solid var(--line); border-radius:14px; overflow:hidden; overflow-x:auto;}
+table{width:100%; border-collapse:collapse; font-size:13.5px;}
+thead th{
+  text-align:left; padding:11px 16px; background:#f7faf9; color:var(--ink-600);
+  font-weight:600; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px;
+  border-bottom:1px solid var(--line); white-space:nowrap;
+}
+tbody td{padding:11px 16px; border-bottom:1px solid #eef2f1; vertical-align:middle;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#fafcfb;}
+.amt{font-family:'IBM Plex Mono',monospace; font-weight:600; text-align:right;}
+.amt.pos{color:var(--ok);}
+.amt.neg{color:var(--bad);}
+.tag{display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap;}
+.tag-income{background:#e6f4ea; color:#227a48;}
+.tag-expense{background:#fbe9e7; color:#b5432f;}
+.tag-transfer{background:#eaf1fb; color:#2c5fa8;}
+.tag-bank{background:#e7f2f5; color:var(--teal-700);}
+.tag-cash{background:#fff3e0; color:var(--orange-600);}
+.empty-row td{text-align:center; padding:34px; color:var(--ink-400);}
+
+/* ===== Progress ===== */
+.progress-bar{height:7px; border-radius:6px; background:#e7ede9; overflow:hidden; margin-top:8px;}
+.progress-fill{height:100%; border-radius:6px; background:linear-gradient(90deg,var(--lime-500),var(--teal-500));}
+
+/* ===== Forms / Modal ===== */
+.modal-overlay{
+  position:fixed; inset:0; background:rgba(11,59,70,0.45); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;
+}
+.modal{
+  background:#fff; border-radius:16px; width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+  box-shadow:0 20px 60px rgba(0,0,0,0.25);
+}
+.modal-head{padding:18px 22px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center;}
+.modal-head h3{margin:0; font-size:16px; font-weight:700;}
+.modal-body{padding:20px 22px;}
+.modal-foot{padding:16px 22px; border-top:1px solid var(--line); display:flex; justify-content:flex-end; gap:10px;}
+.close-x{background:none; border:none; font-size:20px; color:var(--ink-400); line-height:1;}
+
+.field{margin-bottom:14px;}
+.field label{display:block; font-size:12.5px; font-weight:600; color:var(--ink-600); margin-bottom:6px;}
+.field input, .field select, .field textarea{
+  width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:9px;
+  font-size:13.5px; font-family:inherit; background:#fbfdfc;
+}
+.field input:focus, .field select:focus, .field textarea:focus{outline:2px solid var(--lime-500); outline-offset:0; border-color:var(--lime-500);}
+.field-row{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+.hint{font-size:11.5px; color:var(--ink-400); margin-top:5px;}
+.radio-row{display:flex; gap:10px;}
+.radio-chip{flex:1; text-align:center; padding:9px; border:1px solid var(--line); border-radius:9px; font-size:13px; font-weight:600; color:var(--ink-600);}
+.radio-chip input{display:none;}
+.radio-chip.checked{border-color:var(--teal-500); background:#eaf5f4; color:var(--teal-700);}
+
+/* ===== Filters ===== */
+.filter-bar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center;}
+.filter-bar select, .filter-bar input{
+  padding:8px 12px; border:1px solid var(--line); border-radius:9px; font-size:13px; background:#fff; font-family:inherit;
+}
+
+/* ===== Project cards ===== */
+.proj-card{border-radius:14px; border:1px solid var(--line); background:#fff; padding:18px 20px; position:relative;}
+.proj-card .top{display:flex; justify-content:space-between; align-items:flex-start;}
+.proj-card .pname{font-weight:700; font-size:15px;}
+.proj-card .pclient{font-size:12px; color:var(--ink-400); margin-top:2px;}
+.status-pill{font-size:10.5px; font-weight:700; padding:3px 10px; border-radius:20px; white-space:nowrap;}
+.status-running{background:#e6f4ea; color:#227a48;}
+.status-done{background:#eef1f0; color:#5b6b66;}
+.status-hold{background:#fff3e0; color:var(--orange-600);}
+.proj-nums{display:flex; gap:18px; margin-top:14px;}
+.proj-nums div .l{font-size:11px; color:var(--ink-400);}
+.proj-nums div .v{font-family:'IBM Plex Mono',monospace; font-weight:700; font-size:14.5px; margin-top:2px;}
+
+.empty-state{text-align:center; padding:60px 20px; color:var(--ink-400);}
+.empty-state .big-ic{font-size:40px; margin-bottom:10px;}
+
+.toast{
+  position:fixed; bottom:24px; right:24px; background:var(--ink-900); color:#fff;
+  padding:12px 18px; border-radius:10px; font-size:13.5px; z-index:200; box-shadow:0 10px 30px rgba(0,0,0,.25);
+  display:flex; align-items:center; gap:8px; max-width:320px;
+}
+
+.crumb{font-size:12.5px; color:var(--ink-400); margin-bottom:4px;}
+.crumb a{color:var(--teal-500); font-weight:600;}
+
+.auth-wrap{min-height:100vh; display:flex; align-items:center; justify-content:center; background:linear-gradient(135deg,var(--teal-900),#0a2e37 60%); padding:20px;}
+.auth-card{background:#fff; border-radius:18px; padding:36px 32px; width:100%; max-width:380px; box-shadow:0 30px 80px rgba(0,0,0,0.35);}
+.auth-card .field{margin-bottom:14px;}
+
+.spinner{width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,0.25); border-top-color:#fff; animation:spin 0.8s linear infinite; margin:0 auto;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-wrap{min-height:100vh; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; background:linear-gradient(135deg,var(--teal-900),#0a2e37 60%); color:#eaf3f2; font-size:13.5px;}
+
+::-webkit-scrollbar{width:9px; height:9px;}
+::-webkit-scrollbar-thumb{background:#c7d5d2; border-radius:10px;}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+/* ======================================================================
+   GENERAL POWER ENGINEERING LTD — Accounting App
+   Single-file app. Data persists to localStorage (fallback: in-memory)
+   with JSON export/import for backup, and one-click Excel report export.
+   ====================================================================== */
+
+const LOGO_SVG = `<svg viewBox="0 0 415 315" xmlns="http://www.w3.org/2000/svg">
+<path d="M60 10 L160 10 L160 90 L120 90 L180 130 L120 170 L160 170 L160 230 L60 230 L20 190 L20 50 Z" fill="#157a8c"/>
+<path d="M20 190 L60 230 L60 150 Z" fill="#0b3b46"/>
+<path d="M270 10 L120 200 L200 170 L150 300 L400 60 L300 100 Z" fill="#96d13a"/>
+<path d="M260 230 L360 230 L400 190 L400 90 L360 130 L320 90 L360 90 L360 10 L280 10 L280 90 L320 130 L260 170 Z" fill="#e8791a"/>
+<path d="M400 90 L400 190 L360 230 L360 130 Z" fill="#c0392b"/>
+</svg>`;
+
+const BOLT_SVG = `<svg viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg"><path d="M60 0 L20 80 L45 80 L30 150 L90 55 L60 55 Z" fill="#0b3b46"/></svg>`;
+
+function getLogoHtml(){
+  if(DB.company && DB.company.logo){
+    return `<img src="${DB.company.logo}" alt="logo" style="width:100%; height:100%; object-fit:contain;">`;
+  }
+  return LOGO_SVG;
+}
+
+const CURRENCY = "৳";
+const uid = (p="id") => p + "_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
+
+/* ---------------- Language ---------------- */
+const LANG_KEY = "gpe_accounts_lang";
+let LANG = "en";
+
+const DICT = {
+  app_title:{bn:"হিসাব ব্যবস্থাপনা", en:"Accounts Management"},
+  nav_group_summary:{bn:"সারসংক্ষেপ", en:"OVERVIEW"},
+  nav_group_accounts:{bn:"হিসাব", en:"ACCOUNTS"},
+  nav_group_other:{bn:"অন্যান্য", en:"OTHER"},
+  nav_dashboard:{bn:"ড্যাশবোর্ড", en:"Dashboard"},
+  nav_projects:{bn:"প্রজেক্ট সমূহ", en:"Projects"},
+  nav_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
+  nav_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
+  nav_transactions:{bn:"সকল লেনদেন", en:"All Transactions"},
+  nav_reports:{bn:"রিপোর্ট", en:"Reports"},
+  nav_settings:{bn:"সেটিংস", en:"Settings"},
+  sidebar_foot:{bn:"লোকাল ডেটা এই ব্রাউজারে সংরক্ষিত", en:"Data is stored locally in this browser"},
+
+  title_dashboard:{bn:"ড্যাশবোর্ড", en:"Dashboard"},
+  sub_dashboard:{bn:"সার্বিক ব্যবসায়িক অবস্থার এক নজরে", en:"An overview of your overall business position"},
+  title_projects:{bn:"প্রজেক্ট সমূহ", en:"Projects"},
+  sub_projects:{bn:"প্রতিটি প্রজেক্টের পৃথক হিসাব", en:"Separate accounts for every project"},
+  title_projectDetail:{bn:"প্রজেক্ট বিবরণ", en:"Project Details"},
+  title_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
+  sub_banks:{bn:"সকল ব্যাংক অ্যাকাউন্ট ও তার ব্যালেন্স", en:"All bank accounts and their balances"},
+  title_bankDetail:{bn:"ব্যাংক হিসাব বিবরণ", en:"Bank Account Details"},
+  title_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
+  sub_cash:{bn:"হাতে নগদ টাকার হিসাব", en:"Accounts for cash on hand"},
+  title_cashDetail:{bn:"ক্যাশ হিসাব বিবরণ", en:"Cash Account Details"},
+  title_transactions:{bn:"সকল লেনদেন", en:"All Transactions"},
+  sub_transactions:{bn:"প্রতিটি আয়-ব্যয় খুঁজুন ও ফিল্টার করুন", en:"Find and filter every income and expense"},
+  title_reports:{bn:"রিপোর্ট", en:"Reports"},
+  sub_reports:{bn:"প্রজেক্ট ও সময়ভিত্তিক সারাংশ", en:"Project-wise and period-wise summaries"},
+  title_settings:{bn:"সেটিংস", en:"Settings"},
+  sub_settings:{bn:"ক্যাটাগরি ও কোম্পানির তথ্য", en:"Categories and company information"},
+
+  btn_backup_export:{bn:"ব্যাকআপ এক্সপোর্ট", en:"Export Backup"},
+  btn_import:{bn:"ইম্পোর্ট", en:"Import"},
+  btn_new_txn:{bn:"নতুন লেনদেন", en:"New Transaction"},
+  btn_excel_export:{bn:"এক্সেল রিপোর্ট", en:"Excel Report"},
+
+  total_income:{bn:"মোট আয়", en:"Total Income"},
+  total_expense:{bn:"মোট খরচ", en:"Total Expense"},
+  net_profit:{bn:"নীট মুনাফা", en:"Net Profit"},
+  total_cash_bank:{bn:"মোট নগদ + ব্যাংক", en:"Total Cash + Bank"},
+  across_all:{bn:"সকল প্রজেক্ট ও উৎস মিলিয়ে", en:"Across all projects and sources"},
+  income_minus_expense:{bn:"আয় − খরচ", en:"Income − Expense"},
+  bank_label:{bn:"ব্যাংক", en:"Bank"},
+  cash_label:{bn:"ক্যাশ", en:"Cash"},
+  eyebrow_active:{bn:"সক্রিয় কাজ", en:"ACTIVE WORK"},
+  project_summary:{bn:"প্রজেক্ট সারাংশ", en:"Project Summary"},
+  view_all:{bn:"সব দেখুন →", en:"View all →"},
+  eyebrow_recent:{bn:"সাম্প্রতিক", en:"RECENT"},
+  latest_txns:{bn:"সর্বশেষ লেনদেন", en:"Latest Transactions"},
+
+  income:{bn:"আয়", en:"Income"},
+  expense:{bn:"খরচ", en:"Expense"},
+  transfer:{bn:"স্থানান্তর", en:"Transfer"},
+  net:{bn:"নীট", en:"Net"},
+  status_running:{bn:"চলমান", en:"Running"},
+  status_done:{bn:"সম্পন্ন", en:"Done"},
+  status_hold:{bn:"স্থগিত", en:"On Hold"},
+  budget_progress:{bn:"বাজেট {b} এর মধ্যে {p}% আদায়", en:"{p}% collected of {b} budget"},
+
+  no_projects_yet:{bn:"এখনো কোনো প্রজেক্ট যোগ করা হয়নি", en:"No projects added yet"},
+  no_bank_yet:{bn:"এখনো কোনো ব্যাংক হিসাব যোগ করা হয়নি", en:"No bank account added yet"},
+  no_cash_yet:{bn:"এখনো কোনো ক্যাশ হিসাব যোগ করা হয়নি", en:"No cash account added yet"},
+  no_txns_found:{bn:"কোনো লেনদেন পাওয়া যায়নি", en:"No transactions found"},
+
+  col_date:{bn:"তারিখ", en:"Date"},
+  col_type:{bn:"ধরণ", en:"Type"},
+  col_project:{bn:"প্রজেক্ট", en:"Project"},
+  col_account:{bn:"হিসাব", en:"Account"},
+  col_category:{bn:"খাত", en:"Category"},
+  col_description:{bn:"বিবরণ", en:"Description"},
+  col_voucher_no:{bn:"ভাউচার নম্বর", en:"Voucher No."},
+  col_amount:{bn:"পরিমাণ", en:"Amount"},
+  col_client:{bn:"ক্লায়েন্ট", en:"Client"},
+  col_status:{bn:"অবস্থা", en:"Status"},
+  col_budget:{bn:"বাজেট", en:"Budget"},
+  col_account_name:{bn:"হিসাবের নাম", en:"Account Name"},
+  col_bank_name:{bn:"ব্যাংকের নাম", en:"Bank Name"},
+  col_branch:{bn:"শাখা", en:"Branch"},
+  col_acc_no:{bn:"হিসাব নম্বর", en:"Account No."},
+  col_opening:{bn:"প্রারম্ভিক", en:"Opening"},
+  col_current_balance:{bn:"বর্তমান ব্যালেন্স", en:"Current Balance"},
+
+  new_project:{bn:"নতুন প্রজেক্ট", en:"New Project"},
+  project_not_found:{bn:"প্রজেক্ট খুঁজে পাওয়া যায়নি", en:"Project not found"},
+  client_label:{bn:"ক্লায়েন্ট", en:"Client"},
+  start_label:{bn:"শুরু", en:"Start"},
+  budget_label:{bn:"বাজেট", en:"Budget"},
+  edit:{bn:"সম্পাদনা", en:"Edit"},
+  delete:{bn:"মুছুন", en:"Delete"},
+  this_project_txns:{bn:"এই প্রজেক্টের লেনদেন", en:"This Project's Transactions"},
+  add_txn:{bn:"লেনদেন যোগ করুন", en:"Add Transaction"},
+
+  new_bank_account:{bn:"নতুন ব্যাংক হিসাব", en:"New Bank Account"},
+  new_cash_account:{bn:"নতুন ক্যাশ হিসাব", en:"New Cash Account"},
+  cash_fund:{bn:"নগদ তহবিল", en:"Cash Fund"},
+  account_no_short:{bn:"হিসাব নং", en:"A/C No."},
+  current_balance:{bn:"বর্তমান ব্যালেন্স", en:"Current Balance"},
+  account_not_found:{bn:"হিসাব খুঁজে পাওয়া যায়নি", en:"Account not found"},
+  opening_balance:{bn:"প্রারম্ভিক ব্যালেন্স", en:"Opening Balance"},
+  txn_history:{bn:"লেনদেনের ইতিহাস", en:"Transaction History"},
+
+  all_types:{bn:"সকল ধরণ", en:"All Types"},
+  all_projects:{bn:"সকল প্রজেক্ট", en:"All Projects"},
+  general_company:{bn:"সাধারণ (কোম্পানি)", en:"General (Company)"},
+  all_accounts:{bn:"সকল হিসাব", en:"All Accounts"},
+  search_placeholder:{bn:"খুঁজুন...", en:"Search..."},
+  reset:{bn:"রিসেট", en:"Reset"},
+  filtered_income:{bn:"ফিল্টারকৃত আয়", en:"Filtered Income"},
+  filtered_expense:{bn:"ফিল্টারকৃত খরচ", en:"Filtered Expense"},
+
+  total_income_alltime:{bn:"মোট আয় (সর্বকালের)", en:"Total Income (All-time)"},
+  total_expense_alltime:{bn:"মোট খরচ (সর্বকালের)", en:"Total Expense (All-time)"},
+  project_financial_summary:{bn:"প্রজেক্টভিত্তিক আর্থিক সারাংশ", en:"Project-wise Financial Summary"},
+  print:{bn:"প্রিন্ট করুন", en:"Print"},
+  no_projects:{bn:"কোনো প্রজেক্ট নেই", en:"No projects"},
+  account_wise_balance:{bn:"হিসাবভিত্তিক ব্যালেন্স", en:"Account-wise Balance"},
+  category_expense_analysis:{bn:"খাতভিত্তিক ব্যয় বিশ্লেষণ", en:"Category-wise Expense Analysis"},
+  no_expense_found:{bn:"কোনো খরচ পাওয়া যায়নি", en:"No expenses found"},
+  other_category:{bn:"অন্যান্য", en:"Other"},
+
+  company_info:{bn:"কোম্পানির তথ্য", en:"Company Information"},
+  company_name:{bn:"কোম্পানির নাম", en:"Company Name"},
+  tagline:{bn:"ট্যাগলাইন", en:"Tagline"},
+  logo_label:{bn:"লোগো", en:"Logo"},
+  change_logo:{bn:"লোগো পরিবর্তন করুন", en:"Change Logo"},
+  reset_default_logo:{bn:"ডিফল্ট লোগোতে ফিরে যান", en:"Reset to default logo"},
+  logo_hint:{bn:"PNG, JPG বা SVG ছবি আপলোড করুন (সর্বোচ্চ ২ এমবি)", en:"Upload a PNG, JPG, or SVG image (max 2MB)"},
+  save:{bn:"সংরক্ষণ করুন", en:"Save"},
+  data_management:{bn:"ডেটা ব্যবস্থাপনা", en:"Data Management"},
+  data_mgmt_hint:{bn:"সকল তথ্য এখন কেন্দ্রীয়ভাবে ক্লাউড ডাটাবেজে (Supabase) সংরক্ষিত থাকে — যেকোনো ডিভাইস থেকে লগইন করলে একই ডেটা দেখা যাবে। তারপরও মাঝেমধ্যে এক্সেল/ব্যাকআপ রাখা ভালো অভ্যাস।", en:"All data is now stored centrally in a cloud database (Supabase) — logging in from any device shows the same shared data. Still, keeping periodic Excel/backup snapshots is a good habit."},
+  delete_all_data:{bn:"সব ডেটা মুছে ফেলুন", en:"Delete All Data"},
+  no_localstorage_warn:{bn:"⚠️ এই ব্রাউজারে লোকাল স্টোরেজ সক্রিয় নয় — পেজ রিফ্রেশ করলে ডেটা হারিয়ে যেতে পারে। ব্যবহারের পর অবশ্যই এক্সপোর্ট করে ব্যাকআপ রাখুন।", en:"⚠️ Local storage is not available in this browser — data may be lost on refresh. Please export a backup after use."},
+  income_categories:{bn:"আয়ের ক্যাটাগরি", en:"Income Categories"},
+  expense_categories:{bn:"খরচের ক্যাটাগরি", en:"Expense Categories"},
+  new_category:{bn:"নতুন ক্যাটাগরি", en:"New category"},
+  add:{bn:"যোগ করুন", en:"Add"},
+  no_categories:{bn:"কোনো ক্যাটাগরি নেই", en:"No categories"},
+  language_label:{bn:"ভাষা", en:"Language"},
+
+  edit_project:{bn:"প্রজেক্ট সম্পাদনা", en:"Edit Project"},
+  project_name_req:{bn:"প্রজেক্টের নাম *", en:"Project Name *"},
+  project_name_ph:{bn:"যেমন: ১১/০.৪ কেভি সাব-স্টেশন নির্মাণ", en:"e.g. 11/0.4kV Substation Construction"},
+  client_authority:{bn:"ক্লায়েন্ট / কর্তৃপক্ষ", en:"Client / Authority"},
+  start_date:{bn:"শুরুর তারিখ", en:"Start Date"},
+  budget_bdt:{bn:"বাজেট (৳)", en:"Budget (৳)"},
+  status_label:{bn:"অবস্থা", en:"Status"},
+  notes:{bn:"নোট", en:"Notes"},
+  cancel:{bn:"বাতিল", en:"Cancel"},
+
+  edit_account:{bn:"হিসাব সম্পাদনা", en:"Edit Account"},
+  account_name_req:{bn:"হিসাবের নাম *", en:"Account Name *"},
+  account_name_ph_bank:{bn:"যেমন: প্রধান হিসাব", en:"e.g. Main Account"},
+  account_name_ph_cash:{bn:"যেমন: অফিস ক্যাশ", en:"e.g. Office Cash"},
+  bank_name_label:{bn:"ব্যাংকের নাম", en:"Bank Name"},
+  branch_label:{bn:"শাখা", en:"Branch"},
+  acc_no_label:{bn:"হিসাব নম্বর", en:"Account Number"},
+  opening_balance_bdt:{bn:"প্রারম্ভিক ব্যালেন্স (৳)", en:"Opening Balance (৳)"},
+
+  new_transaction:{bn:"নতুন লেনদেন", en:"New Transaction"},
+  edit_transaction:{bn:"লেনদেন সম্পাদনা", en:"Edit Transaction"},
+  type_label:{bn:"ধরণ", en:"Type"},
+  date_label:{bn:"তারিখ", en:"Date"},
+  amount_bdt_req:{bn:"পরিমাণ (৳) *", en:"Amount (৳) *"},
+  project_optional:{bn:"প্রজেক্ট (ঐচ্ছিক — না দিলে সাধারণ কোম্পানি খরচ ধরা হবে)", en:"Project (optional — if left blank, this counts as a general company expense)"},
+  account_from_to:{bn:"হিসাব থেকে/এ", en:"Account (From/To)"},
+  recipient_acc_type:{bn:"প্রাপক হিসাবের ধরণ", en:"Recipient Account Type"},
+  recipient_account:{bn:"প্রাপক হিসাব", en:"Recipient Account"},
+  category_label:{bn:"খাত", en:"Category"},
+  description_label:{bn:"বিবরণ", en:"Description"},
+  description_ph:{bn:"সংক্ষিপ্ত বিবরণ লিখুন", en:"Write a short description"},
+  voucher_no_label:{bn:"ভাউচার নম্বর (CPV/CRV)", en:"Voucher No. (CPV/CRV)"},
+  voucher_no_ph:{bn:"যেমন: CPV-00124", en:"e.g. CPV-00124"},
+  voucher_no_short:{bn:"ভাউচার", en:"Voucher"},
+  payment_method:{bn:"পরিশোধের ধরণ", en:"Payment Method"},
+  cash_method:{bn:"নগদ", en:"Cash"},
+  cheque_method:{bn:"চেক", en:"Cheque"},
+  bank_transfer_method:{bn:"ব্যাংক টু ব্যাংক", en:"Bank to Bank"},
+  cheque_no_label:{bn:"চেক নম্বর", en:"Cheque No."},
+  cheque_no_ph:{bn:"যেমন: 0021458", en:"e.g. 0021458"},
+  cheque_bank_name_label:{bn:"চেকের ব্যাংকের নাম", en:"Cheque's Bank Name"},
+  cheque_bank_name_ph:{bn:"যেমন: সোনালী ব্যাংক", en:"e.g. Sonali Bank"},
+  withdrawal_cheque_no_label:{bn:"চেক নম্বর (ঐচ্ছিক)", en:"Cheque No. (optional)"},
+  withdrawn_by_label:{bn:"কে উত্তোলন করেছেন (ঐচ্ছিক)", en:"Withdrawn By (optional)"},
+  withdrawn_by_ph:{bn:"ব্যক্তির নাম লিখুন", en:"Enter the person's name"},
+  cheque_no_short:{bn:"চেক নং", en:"Cheque No."},
+  cheque_bank_short:{bn:"চেকের ব্যাংক", en:"Cheque Bank"},
+  withdrawn_by_short:{bn:"উত্তোলনকারী", en:"Withdrawn By"},
+  col_method:{bn:"পরিশোধের ধরণ", en:"Payment Method"},
+  col_cheque_no:{bn:"চেক নম্বর", en:"Cheque No."},
+  col_cheque_bank:{bn:"চেকের ব্যাংক", en:"Cheque Bank"},
+  col_withdrawn_by:{bn:"উত্তোলনকারীর নাম", en:"Withdrawn By"},
+  menu_toggle_label:{bn:"মেনু", en:"Menu"},
+
+  toast_name_required:{bn:"নাম আবশ্যক", en:"Name is required"},
+  toast_project_name_required:{bn:"প্রজেক্টের নাম আবশ্যক", en:"Project name is required"},
+  toast_project_saved:{bn:"প্রজেক্ট সংরক্ষিত হয়েছে", en:"Project saved"},
+  toast_account_saved:{bn:"হিসাব সংরক্ষিত হয়েছে", en:"Account saved"},
+  toast_valid_amount:{bn:"সঠিক পরিমাণ লিখুন", en:"Please enter a valid amount"},
+  toast_same_account_transfer:{bn:"একই হিসাবে স্থানান্তর সম্ভব নয়", en:"Cannot transfer to the same account"},
+  toast_select_account:{bn:"একটি হিসাব নির্বাচন করুন", en:"Please select an account"},
+  toast_txn_saved:{bn:"লেনদেন সংরক্ষিত হয়েছে", en:"Transaction saved"},
+  confirm_del_project:{bn:"এই প্রজেক্ট ও এর সকল লেনদেন মুছে ফেলা হবে। নিশ্চিত?", en:"This project and all its transactions will be deleted. Are you sure?"},
+  toast_project_deleted:{bn:"প্রজেক্ট মুছে ফেলা হয়েছে", en:"Project deleted"},
+  confirm_del_account:{bn:"এই হিসাব মুছে ফেলা হবে (লেনদেনগুলো থেকে যাবে তবে অসংযুক্ত হয়ে যাবে)। নিশ্চিত?", en:"This account will be deleted (its transactions will remain but become unlinked). Are you sure?"},
+  toast_account_deleted:{bn:"হিসাব মুছে ফেলা হয়েছে", en:"Account deleted"},
+  confirm_del_txn:{bn:"এই লেনদেনটি মুছে ফেলবেন?", en:"Delete this transaction?"},
+  toast_txn_deleted:{bn:"লেনদেন মুছে ফেলা হয়েছে", en:"Transaction deleted"},
+  toast_saved:{bn:"সংরক্ষণ করা হয়েছে", en:"Saved"},
+  toast_only_images:{bn:"শুধুমাত্র ছবি ফাইল আপলোড করুন", en:"Please upload an image file only"},
+  toast_image_too_big:{bn:"ছবির সাইজ ২ এমবির বেশি হতে পারবে না", en:"Image size cannot exceed 2MB"},
+  toast_logo_changed:{bn:"লোগো পরিবর্তন করা হয়েছে", en:"Logo updated"},
+  toast_logo_reset:{bn:"ডিফল্ট লোগো পুনরুদ্ধার করা হয়েছে", en:"Default logo restored"},
+  confirm_reset_all_1:{bn:"সতর্কতা: সকল ডেটা স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?", en:"Warning: all data will be permanently deleted. Are you sure?"},
+  confirm_reset_all_2:{bn:"এটি আর ফিরিয়ে আনা যাবে না। আবার নিশ্চিত করুন।", en:"This cannot be undone. Please confirm again."},
+  toast_all_data_deleted:{bn:"সকল ডেটা মুছে ফেলা হয়েছে", en:"All data deleted"},
+  toast_category_added:{bn:"ক্যাটাগরি যোগ হয়েছে", en:"Category added"},
+  toast_backup_downloaded:{bn:"ব্যাকআপ ফাইল ডাউনলোড হয়েছে", en:"Backup file downloaded"},
+  toast_invalid_backup:{bn:"ফাইলটি সঠিক ব্যাকআপ নয়", en:"This file is not a valid backup"},
+  confirm_import:{bn:"বর্তমান সকল ডেটা প্রতিস্থাপিত হবে। আমদানি করতে চান?", en:"All current data will be replaced. Do you want to import?"},
+  toast_import_success:{bn:"ব্যাকআপ থেকে ডেটা আমদানি হয়েছে", en:"Data imported from backup"},
+  toast_import_error:{bn:"ফাইল পড়তে সমস্যা হয়েছে", en:"There was a problem reading the file"},
+  toast_excel_exported:{bn:"সকল রিপোর্টের এক্সেল ফাইল ডাউনলোড হয়েছে", en:"Excel file with all reports downloaded"},
+  toast_excel_lib_missing:{bn:"এক্সেল লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন", en:"Excel library failed to load — please check your internet connection"},
+
+  xl_sheet_summary:{bn:"সারসংক্ষেপ", en:"Summary"},
+  xl_sheet_projects:{bn:"প্রজেক্ট", en:"Projects"},
+  xl_sheet_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
+  xl_sheet_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
+  xl_sheet_txns:{bn:"সকল লেনদেন", en:"All Transactions"},
+  xl_metric:{bn:"বিষয়", en:"Metric"},
+  xl_value:{bn:"পরিমাণ", en:"Value"},
+  xl_total_bank_balance:{bn:"মোট ব্যাংক ব্যালেন্স", en:"Total Bank Balance"},
+  xl_total_cash_balance:{bn:"মোট ক্যাশ ব্যালেন্স", en:"Total Cash Balance"},
+  xl_generated_on:{bn:"রিপোর্ট তৈরির তারিখ", en:"Report Generated On"},
+
+  auth_setup_title:{bn:"প্রথমবার সেটআপ — মূল অ্যাডমিন একাউন্ট তৈরি করুন", en:"First-time Setup — Create Main Admin Account"},
+  auth_setup_subtitle:{bn:"এই একাউন্ট দিয়ে আপনি অন্যান্য ইউজার তৈরি করতে পারবেন", en:"You can create other users with this account"},
+  auth_username:{bn:"ইউজারনেম", en:"Username"},
+  auth_password:{bn:"পাসওয়ার্ড", en:"Password"},
+  auth_confirm_password:{bn:"পাসওয়ার্ড নিশ্চিত করুন", en:"Confirm Password"},
+  auth_create_admin:{bn:"অ্যাডমিন একাউন্ট তৈরি করুন", en:"Create Admin Account"},
+  auth_login_subtitle:{bn:"চালিয়ে যেতে আপনার ইউজারনেম ও পাসওয়ার্ড দিন", en:"Enter your username and password to continue"},
+  auth_login_btn:{bn:"লগ ইন", en:"Log In"},
+  auth_logout:{bn:"লগ আউট", en:"Log Out"},
+  auth_toast_fields_required:{bn:"সব ঘর পূরণ করুন", en:"Please fill in all fields"},
+  auth_toast_password_mismatch:{bn:"পাসওয়ার্ড মিলছে না", en:"Passwords do not match"},
+  auth_toast_password_min:{bn:"পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে", en:"Password must be at least 4 characters"},
+  auth_toast_admin_created:{bn:"অ্যাডমিন একাউন্ট তৈরি হয়েছে", en:"Admin account created"},
+  auth_toast_invalid_login:{bn:"ইউজারনেম বা পাসওয়ার্ড ভুল", en:"Incorrect username or password"},
+  auth_toast_logged_in:{bn:"লগ ইন সফল হয়েছে", en:"Logged in successfully"},
+
+  my_account:{bn:"আমার একাউন্ট", en:"My Account"},
+  logged_in_as:{bn:"লগ ইন করা আছে", en:"Logged in as"},
+  current_password:{bn:"বর্তমান পাসওয়ার্ড", en:"Current Password"},
+  new_password:{bn:"নতুন পাসওয়ার্ড", en:"New Password"},
+  confirm_new_password:{bn:"নতুন পাসওয়ার্ড নিশ্চিত করুন", en:"Confirm New Password"},
+  change_password_btn:{bn:"পাসওয়ার্ড পরিবর্তন করুন", en:"Change Password"},
+  toast_password_changed:{bn:"পাসওয়ার্ড পরিবর্তন হয়েছে", en:"Password changed successfully"},
+  toast_current_password_wrong:{bn:"বর্তমান পাসওয়ার্ড সঠিক নয়", en:"Current password is incorrect"},
+
+  user_management:{bn:"ইউজার ব্যবস্থাপনা", en:"User Management"},
+  user_management_hint:{bn:"শুধুমাত্র অ্যাডমিন নতুন ইউজার তৈরি করতে পারবে; নিষ্ক্রিয় করলে সেই ইউজার আর লগইন করতে পারবে না", en:"Only an admin can create users; disabling a user immediately blocks their login"},
+  new_user:{bn:"নতুন ইউজার", en:"New User"},
+  role_label:{bn:"ভূমিকা", en:"Role"},
+  role_admin:{bn:"অ্যাডমিন", en:"Admin"},
+  role_user:{bn:"সাধারণ ইউজার", en:"Regular User"},
+  create_user_btn:{bn:"ইউজার তৈরি করুন", en:"Create User"},
+  status_active:{bn:"সক্রিয়", en:"Active"},
+  status_disabled:{bn:"নিষ্ক্রিয়", en:"Disabled"},
+  enable_user_btn:{bn:"সক্রিয় করুন", en:"Enable"},
+  disable_user_btn:{bn:"নিষ্ক্রিয় করুন", en:"Disable"},
+  your_password_confirm:{bn:"আপনার নিজের পাসওয়ার্ড (নিশ্চিতকরণ)", en:"Your own password (to confirm)"},
+  your_password_confirm_hint:{bn:"নতুন ইউজার তৈরির সময় সাময়িকভাবে সেশন পাল্টাতে হয়, তাই আপনার পাসওয়ার্ড দিয়ে আবার অ্যাডমিন হিসেবে ফিরিয়ে আনা হবে।", en:"Creating a user briefly switches sessions internally, so your password is needed to sign you back in as admin afterward."},
+  forgot_password_admin_hint:{bn:"কারো পাসওয়ার্ড ভুলে গেলে: Supabase Dashboard → Authentication → Users এ গিয়ে সরাসরি নতুন পাসওয়ার্ড সেট করা যায় (এখান থেকে সরাসরি রিসেট করা যায় না, নিরাপত্তার কারণে)।", en:"If someone forgets their password: go to Supabase Dashboard → Authentication → Users and set a new password there directly (this can't be reset from inside the app itself, by design, for security)."},
+  toast_wrong_own_password:{bn:"আপনার পাসওয়ার্ড ভুল — ইউজার তৈরি হয়েছে কিনা যাচাই করে আবার লগইন করুন", en:"Your password was wrong — please check if the user was created and log in again"},
+  toast_user_enabled:{bn:"ইউজার সক্রিয় করা হয়েছে", en:"User enabled"},
+  confirm_delete_user:{bn:"এই ইউজারকে নিষ্ক্রিয় করবেন? সে আর লগইন করতে পারবে না।", en:"Disable this user? They will no longer be able to log in."},
+  toast_user_deleted:{bn:"ইউজার নিষ্ক্রিয় করা হয়েছে", en:"User disabled"},
+  toast_cannot_delete_self:{bn:"নিজের একাউন্ট নিষ্ক্রিয় করতে পারবেন না", en:"You cannot disable your own account"},
+  toast_cannot_delete_last_admin:{bn:"শেষ সক্রিয় অ্যাডমিন একাউন্টটি নিষ্ক্রিয় করা যাবে না", en:"Cannot disable the last active admin account"},
+  toast_user_created:{bn:"নতুন ইউজার তৈরি হয়েছে", en:"New user created"},
+  toast_username_taken:{bn:"এই ইউজারনেমটি ইতিমধ্যে ব্যবহৃত হচ্ছে", en:"This username is already taken"},
+  created_on:{bn:"তৈরির তারিখ", en:"Created On"},
+  security_local_note:{bn:"এই সিস্টেমে লগইন এখন Supabase-এর নিজস্ব Auth দিয়ে নিয়ন্ত্রিত এবং RLS দ্বারা সুরক্ষিত — শুধু URL+key জেনে ফেললেই কেউ ডেটা পড়তে/লিখতে পারবে না, বৈধ লগইন লাগবে। তারপরও আপনার Supabase URL ও Anon Key পাবলিকভাবে শেয়ার না করাই ভালো অভ্যাস।", en:"Login is now backed by Supabase's own Auth system and protected by RLS — knowing the URL+key alone is no longer enough to read or write data, a valid login is required. Still, avoid sharing your Supabase URL and Anon Key publicly as good practice."},
+
+  col_created_by:{bn:"এন্ট্রিকারী", en:"Entered By"},
+  col_created_at:{bn:"এন্ট্রির সময়", en:"Entry Time"},
+  created_by_short:{bn:"এন্ট্রি", en:"Entry by"},
+  nav_users:{bn:"ইউজার ব্যবস্থাপনা", en:"User Management"},
+
+  db_connect_title:{bn:"ডাটাবেজ সংযোগ সেটআপ", en:"Database Connection Setup"},
+  db_connect_subtitle:{bn:"সবার ডেটা একসাথে (ক্লাউডে) রাখতে Supabase প্রজেক্টের তথ্য দিন", en:"Enter your Supabase project details to keep everyone's data in one shared cloud database"},
+  db_project_url:{bn:"Supabase Project URL", en:"Supabase Project URL"},
+  db_anon_key:{bn:"Supabase Anon (public) Key", en:"Supabase Anon (public) Key"},
+  db_connect_btn:{bn:"সংযোগ করুন", en:"Connect"},
+  db_connect_help:{bn:"Supabase ড্যাশবোর্ড → Project Settings → API থেকে এই দুটি তথ্য পাবেন। এই তথ্য শুধু এই ব্রাউজারেই সংরক্ষিত হবে।", en:"Find these under Supabase Dashboard → Project Settings → API. This info is stored only in this browser."},
+  db_loading:{bn:"ডেটা লোড হচ্ছে...", en:"Loading data..."},
+  db_connect_error:{bn:"সংযোগ ব্যর্থ হয়েছে। URL ও Key যাচাই করে আবার চেষ্টা করুন।", en:"Connection failed. Please check the URL and Key and try again."},
+  db_change_connection:{bn:"ডাটাবেজ সংযোগ পরিবর্তন করুন", en:"Change Database Connection"},
+  confirm_change_db:{bn:"আপনি লগ আউট হয়ে যাবেন এবং নতুন ডাটাবেজ কনফিগার করতে হবে। এগোতে চান?", en:"You will be logged out and asked to configure a new database. Continue?"},
+  toast_saving:{bn:"সংরক্ষণ হচ্ছে...", en:"Saving..."},
+  toast_sync_error:{bn:"সিঙ্ক করতে সমস্যা হয়েছে, ইন্টারনেট সংযোগ পরীক্ষা করুন", en:"Sync failed, please check your internet connection"}
+};
+function L(key, vars){
+  const row = DICT[key];
+  let s = row ? (row[LANG] || row.bn || key) : key;
+  if(vars){ Object.keys(vars).forEach(k=>{ s = s.replace("{"+k+"}", vars[k]); }); }
+  return s;
+}
+function setLang(l){
+  LANG = l;
+  try{ localStorage.setItem(LANG_KEY, l); }catch(e){}
+  render();
+}
+
+function fmt(n){
+  n = Number(n)||0;
+  const neg = n < 0;
+  n = Math.abs(n);
+  const s = n.toLocaleString('en-IN', {maximumFractionDigits:0});
+  return (neg?"-":"") + CURRENCY + s;
+}
+function fmtDate(d){
+  if(!d) return "-";
+  const dt = new Date(d+"T00:00:00");
+  const monthsBn=["জান","ফেব","মার্চ","এপ্রি","মে","জুন","জুলা","আগ","সেপ্টে","অক্টো","নভে","ডিসে"];
+  const monthsEn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months = LANG==='en'? monthsEn : monthsBn;
+  return dt.getDate()+" "+months[dt.getMonth()]+" "+dt.getFullYear();
+}
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function statusLabel(status){
+  return status==='done'? L('status_done') : status==='hold'? L('status_hold') : L('status_running');
+}
+function typeLabel(type){
+  return type==='income'? L('income') : type==='expense'? L('expense') : L('transfer');
+}
+
+/* ---------------- Data layer (Supabase cloud database) ---------------- */
+const SB_CONFIG_KEY = "gpe_supabase_config";
+// Baked-in default connection so every device connects automatically
+// without re-entering the URL/key. Keep this file private (see SETUP_GUIDE.md).
+const DEFAULT_SB_URL = "https://eftxugfeychjtafntdxk.supabase.co";
+const DEFAULT_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVmdHh1Z2ZleWNoanRhZm50ZHhrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc5MDA5NzUsImV4cCI6MjEwMzQ3Njk3NX0.dDLvVj3YQMp8tCvU1d6rgqY2UgXSGDSwHcPqZXo3ggI";
+let SB = null;
+
+function getSbConfig(){
+  try{
+    const raw = localStorage.getItem(SB_CONFIG_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  if(DEFAULT_SB_URL && DEFAULT_SB_KEY){ return {url:DEFAULT_SB_URL, key:DEFAULT_SB_KEY}; }
+  return null;
+}
+function setSbConfig(url, key){
+  try{ localStorage.setItem(SB_CONFIG_KEY, JSON.stringify({url,key})); }catch(e){}
+}
+function clearSbConfig(){
+  try{ localStorage.removeItem(SB_CONFIG_KEY); }catch(e){}
+}
+function initSupabase(url, key){
+  SB = supabase.createClient(url, key);
+}
+
+function defaultDB(){
+  return {
+    company:{ name:"General Power Engineering LTD", tagline:"Trusted In Power Distribution", logo:null },
+    projects:[],
+    banks:[],
+    cash:[],
+    transactions:[],
+    users:[],
+    categories:{ income:[], expense:[] }
+  };
+}
+let DB = defaultDB();
+
+/* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
+function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||""}; }
+function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+function mapUserRow(r){ return {id:r.id, username:r.username, role:r.role||"user", disabled:!!r.disabled, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+
+function projectToRow(p){ return {name:p.name, client:p.client||null, start_date:p.startDate||null, budget:p.budget||0, status:p.status||"running", notes:p.notes||null, created_by:p.createdBy||null, updated_by:p.updatedBy||null, progress_percent:(p.progressPercent!=null?p.progressPercent:0)}; }
+function bankToRow(a){ return {name:a.name, bank_name:a.bankName||null, branch:a.branch||null, acc_no:a.accNo||null, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
+function cashToRow(a){ return {name:a.name, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
+function txnToRow(t){ return {date:t.date, type:t.type, project_id:t.projectId||null, account_type:t.accountType||null, account_id:t.accountId||null, to_account_type:t.toAccountType||null, to_account_id:t.toAccountId||null, category:t.category||null, description:t.desc||null, voucher_no:t.voucherNo||null, method:t.method||null, cheque_no:t.chequeNo||null, cheque_bank_name:t.chequeBankName||null, withdrawn_by:t.withdrawnBy||null, amount:t.amount, created_by:t.createdBy||null, updated_by:t.updatedBy||null}; }
+
+async function fetchAllData(){
+  try{
+    const [companyRes, projRes, bankRes, cashRes, txnRes, profRes, catRes] = await Promise.all([
+      SB.from("company").select("*").eq("id",1).single(),
+      SB.from("projects").select("*"),
+      SB.from("bank_accounts").select("*"),
+      SB.from("cash_accounts").select("*"),
+      SB.from("transactions").select("*"),
+      SB.from("profiles").select("*"),
+      SB.from("categories").select("*")
+    ]);
+    if(companyRes.error) throw companyRes.error;
+    if(projRes.error) throw projRes.error;
+    if(bankRes.error) throw bankRes.error;
+    if(cashRes.error) throw cashRes.error;
+    if(txnRes.error) throw txnRes.error;
+    if(profRes.error) throw profRes.error;
+    if(catRes.error) throw catRes.error;
+
+    const cr = companyRes.data || {};
+    DB.company = { name: cr.name || "General Power Engineering LTD", tagline: cr.tagline || "Trusted In Power Distribution", logo: cr.logo || null };
+    DB.projects = (projRes.data||[]).map(mapProjectRow);
+    DB.banks = (bankRes.data||[]).map(mapBankRow);
+    DB.cash = (cashRes.data||[]).map(mapCashRow);
+    DB.transactions = (txnRes.data||[]).map(mapTxnRow);
+    DB.users = (profRes.data||[]).map(mapUserRow);
+    DB.categories = { income:[], expense:[] };
+    (catRes.data||[]).forEach(c=>{ if(DB.categories[c.kind]) DB.categories[c.kind].push(c.name); });
+    return true;
+  }catch(e){
+    console.error("fetchAllData error", e);
+    return false;
+  }
+}
+async function refreshAndRender(){
+  const ok = await fetchAllData();
+  if(!ok){ toast(L('toast_sync_error')); }
+  render();
+}
+
+/* ---------------- App boot state ---------------- */
+let APP_STATE = "need_config"; // need_config | loading | ready | config_error
+let HAS_SESSION = false;
+let SETUP_NEEDED = false;
+let CURRENT_PROFILE = null;
+
+async function establishProfileAndData(){
+  const { data:{ user } } = await SB.auth.getUser();
+  if(!user) return false;
+  const { data: profile, error } = await SB.from("profiles").select("*").eq("id", user.id).single();
+  if(error || !profile || profile.disabled){
+    try{ await SB.auth.signOut(); }catch(e){}
+    CURRENT_PROFILE = null;
+    return false;
+  }
+  CURRENT_PROFILE = mapUserRow(profile);
+  return await fetchAllData();
+}
+
+async function boot(){
+  const cfg = getSbConfig();
+  if(!cfg){ APP_STATE = "need_config"; render(); return; }
+  initSupabase(cfg.url, cfg.key);
+  APP_STATE = "loading"; render();
+
+  const { data:{ session } } = await SB.auth.getSession();
+  HAS_SESSION = !!session;
+
+  if(HAS_SESSION){
+    const ok = await establishProfileAndData();
+    if(!ok){ HAS_SESSION = false; }
+  }
+  if(!HAS_SESSION){
+    try{
+      const { data } = await SB.rpc("any_profile_exists");
+      SETUP_NEEDED = !data;
+    }catch(e){ SETUP_NEEDED = false; }
+  }
+  APP_STATE = "ready";
+  render();
+  if(HAS_SESSION) setupRealtimeSync();
+}
+
+let REALTIME_CHANNEL = null;
+let realtimeDebounce = null;
+function setupRealtimeSync(){
+  if(REALTIME_CHANNEL || !SB) return;
+  const onChange = ()=>{
+    clearTimeout(realtimeDebounce);
+    realtimeDebounce = setTimeout(async ()=>{
+      await fetchAllData();
+      if(!document.getElementById("modalOverlay")) render();
+    }, 400);
+  };
+  REALTIME_CHANNEL = SB.channel("gpe-accounts-sync")
+    .on("postgres_changes", {event:"*", schema:"public", table:"projects"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"bank_accounts"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"cash_accounts"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"transactions"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"categories"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"profiles"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"company"}, onChange)
+    .subscribe();
+}
+async function teardownRealtimeSync(){
+  if(REALTIME_CHANNEL && SB){ try{ await SB.removeChannel(REALTIME_CHANNEL); }catch(e){} }
+  REALTIME_CHANNEL = null;
+}
+
+/* ---------------- Auth ----------------
+   Real Supabase Auth is used under the hood so a leaked anon key alone
+   cannot read or write data — a valid logged-in (non-disabled) account
+   is required, enforced server-side by RLS. Login still feels like a
+   simple username+password to the user: usernames are mapped to a
+   generated placeholder email internally (Supabase Auth requires an
+   email-shaped identifier). */
+function simpleHash(str){
+  let h1 = 0xdeadbeef ^ str.length, h2 = 0x41c6ce57 ^ str.length;
+  for(let i=0;i<str.length;i++){
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1>>>16), 2246822507) ^ Math.imul(h2 ^ (h2>>>13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2>>>16), 2246822507) ^ Math.imul(h1 ^ (h1>>>13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1>>>0)).toString(16);
+}
+function usernameToEmail(username){
+  return "u" + simpleHash(String(username).trim().toLowerCase()) + "@gpe-accounts.local";
+}
+
+function currentUser(){ return CURRENT_PROFILE; }
+function isAdmin(){ const u = currentUser(); return !!(u && u.role==='admin' && !u.disabled); }
+function stampCreated(obj){
+  const u = currentUser();
+  obj.createdBy = u? u.username : "";
+  obj.createdAt = new Date().toISOString();
+  return obj;
+}
+function stampUpdated(obj){
+  const u = currentUser();
+  obj.updatedBy = u? u.username : "";
+  obj.updatedAt = new Date().toISOString();
+  return obj;
+}
+
+
+/* ---------------- Router / State ---------------- */
+let ROUTE = {page:"dashboard", id:null};
+let SIDEBAR_OPEN = false;
+let FILTERS = { type:"", scope:"", projectId:"", accountType:"", accountId:"", from:"", to:"", q:"" };
+
+function navigate(page, id=null){
+  ROUTE = {page, id};
+  SIDEBAR_OPEN = false;
+  render();
+  window.scrollTo({top:0});
+}
+
+/* ---------------- Computations ---------------- */
+function accountBalance(type, id){
+  const acc = (type==="bank"? DB.banks: DB.cash).find(a=>a.id===id);
+  if(!acc) return 0;
+  let bal = Number(acc.opening)||0;
+  DB.transactions.forEach(t=>{
+    if(t.type==="transfer"){
+      if(t.accountType===type && t.accountId===id) bal -= Number(t.amount);
+      if(t.toAccountType===type && t.toAccountId===id) bal += Number(t.amount);
+    } else if(t.accountType===type && t.accountId===id){
+      bal += (t.type==="income"? Number(t.amount) : -Number(t.amount));
+    }
+  });
+  return bal;
+}
+function totalBankBalance(){ return DB.banks.reduce((s,b)=>s+accountBalance("bank",b.id),0); }
+function totalCashBalance(){ return DB.cash.reduce((s,c)=>s+accountBalance("cash",c.id),0); }
+
+function companyTotals(){
+  let income=0, expense=0;
+  DB.transactions.forEach(t=>{
+    if(t.type==="income") income += Number(t.amount);
+    if(t.type==="expense") expense += Number(t.amount);
+  });
+  return {income, expense, net: income-expense};
+}
+function projectTotals(projectId){
+  let income=0, expense=0;
+  DB.transactions.filter(t=>t.projectId===projectId).forEach(t=>{
+    if(t.type==="income") income += Number(t.amount);
+    if(t.type==="expense") expense += Number(t.amount);
+  });
+  return {income, expense, net: income-expense};
+}
+function projectName(id){ const p = DB.projects.find(p=>p.id===id); return p? p.name : L('general_company'); }
+function accountName(type,id){
+  const list = type==="bank"? DB.banks : DB.cash;
+  const a = list.find(x=>x.id===id);
+  return a? a.name : "-";
+}
+
+/* ---------------- Utility: mutate + persist ---------------- */
+function commit(){ refreshAndRender(); }
+function toast(msg){
+  const el = document.createElement("div");
+  el.className="toast";
+  el.innerHTML = `<span>✓</span><span>${msg}</span>`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+
+/* ---------------- Modal helper ---------------- */
+function openModal(html, onMount){
+  closeModal();
+  const overlay = document.createElement("div");
+  overlay.className="modal-overlay";
+  overlay.id="modalOverlay";
+  overlay.innerHTML = `<div class="modal">${html}</div>`;
+  overlay.addEventListener("click", (e)=>{ if(e.target===overlay) closeModal(); });
+  document.body.appendChild(overlay);
+  if(onMount) onMount(overlay);
+}
+function closeModal(){ const m = document.getElementById("modalOverlay"); if(m) m.remove(); }
+
+/* ====================================================================
+   EXCEL EXPORT — one click, all reports in one workbook
+   ==================================================================== */
+function exportAllReportsExcel(){
+  if(typeof XLSX === 'undefined'){ toast(L('toast_excel_lib_missing')); return; }
+  const wb = XLSX.utils.book_new();
+
+  // Summary sheet
+  const tot = companyTotals();
+  const summaryRows = [
+    [L('xl_metric'), L('xl_value')],
+    [L('total_income'), tot.income],
+    [L('total_expense'), tot.expense],
+    [L('net_profit'), tot.net],
+    [L('xl_total_bank_balance'), totalBankBalance()],
+    [L('xl_total_cash_balance'), totalCashBalance()],
+    [],
+    [L('xl_generated_on'), fmtDate(todayStr())]
+  ];
+  const wsSummary = XLSX.utils.aoa_to_sheet(summaryRows);
+  wsSummary['!cols'] = [{wch:26},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, wsSummary, L('xl_sheet_summary'));
+
+  // Projects sheet
+  const projRows = [[L('col_project'), L('col_client'), L('col_status'), L('col_budget'), L('total_income'), L('total_expense'), L('net')]];
+  DB.projects.forEach(p=>{
+    const t = projectTotals(p.id);
+    projRows.push([p.name, p.client||'', statusLabel(p.status), Number(p.budget)||0, t.income, t.expense, t.net]);
+  });
+  const wsProj = XLSX.utils.aoa_to_sheet(projRows);
+  wsProj['!cols'] = [{wch:32},{wch:22},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, wsProj, L('xl_sheet_projects'));
+
+  // Bank accounts sheet
+  const bankRows = [[L('col_account_name'), L('col_bank_name'), L('col_branch'), L('col_acc_no'), L('col_opening'), L('col_current_balance')]];
+  DB.banks.forEach(b=> bankRows.push([b.name, b.bankName||'', b.branch||'', b.accNo||'', Number(b.opening)||0, accountBalance('bank',b.id)]));
+  const wsBank = XLSX.utils.aoa_to_sheet(bankRows);
+  wsBank['!cols'] = [{wch:24},{wch:26},{wch:18},{wch:20},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsBank, L('xl_sheet_banks'));
+
+  // Cash accounts sheet
+  const cashRows = [[L('col_account_name'), L('col_opening'), L('col_current_balance')]];
+  DB.cash.forEach(c=> cashRows.push([c.name, Number(c.opening)||0, accountBalance('cash',c.id)]));
+  const wsCash = XLSX.utils.aoa_to_sheet(cashRows);
+  wsCash['!cols'] = [{wch:24},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsCash, L('xl_sheet_cash'));
+
+  // All transactions sheet
+  const txnRows = [[L('col_date'), L('col_type'), L('col_project'), L('col_account'), L('col_category'), L('col_description'), L('col_voucher_no'), L('col_method'), L('col_cheque_no'), L('col_cheque_bank'), L('col_withdrawn_by'), L('col_amount'), L('col_created_by')]];
+  [...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
+    let accStr = accountName(t.accountType, t.accountId);
+    if(t.type==='transfer'){ accStr += " -> " + accountName(t.toAccountType, t.toAccountId); }
+    const signedAmount = t.type==='expense'? -Number(t.amount) : Number(t.amount);
+    const methodStr = t.method==='cheque'? L('cheque_method') : (t.method==='bank_transfer'? L('bank_transfer_method') : (t.method==='cash'? L('cash_method') : ''));
+    txnRows.push([t.date, typeLabel(t.type), projectName(t.projectId), accStr, t.category||'', t.desc||'', t.voucherNo||'', methodStr, t.chequeNo||'', t.chequeBankName||'', t.withdrawnBy||'', signedAmount, t.createdBy||'']);
+  });
+  const wsTxn = XLSX.utils.aoa_to_sheet(txnRows);
+  wsTxn['!cols'] = [{wch:12},{wch:10},{wch:30},{wch:26},{wch:18},{wch:34},{wch:16},{wch:12},{wch:14},{wch:20},{wch:20},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb, wsTxn, L('xl_sheet_txns'));
+
+  const companyPart = (DB.company.name||"GPE").replace(/[^a-zA-Z0-9]+/g,"_").slice(0,30);
+  XLSX.writeFile(wb, `${companyPart}_Reports_${todayStr()}.xlsx`);
+  toast(L('toast_excel_exported'));
+}
+
+/* ====================================================================
+   RENDER
+   ==================================================================== */
+function render(){
+  const app = document.getElementById("app");
+  if(APP_STATE==="need_config"){
+    app.innerHTML = renderConfigScreen();
+    bindConfigEvents();
+    return;
+  }
+  if(APP_STATE==="loading"){
+    app.innerHTML = renderLoadingScreen();
+    return;
+  }
+  if(APP_STATE==="config_error"){
+    app.innerHTML = renderConfigErrorScreen();
+    bindConfigErrorEvents();
+    return;
+  }
+  if(!HAS_SESSION || !currentUser()){
+    if(SETUP_NEEDED){
+      app.innerHTML = renderSetupScreen();
+      bindSetupEvents();
+    } else {
+      app.innerHTML = renderLoginScreen();
+      bindLoginEvents();
+    }
+    return;
+  }
+  app.innerHTML = `
+    <div id="app">
+      ${sidebar()}
+      <div class="sidebar-overlay ${SIDEBAR_OPEN?'show':''}" id="sidebarOverlay"></div>
+      <div class="main">
+        ${topbar()}
+        <div class="content">${pageBody()}</div>
+      </div>
+    </div>
+  `;
+  bindGlobalEvents();
+}
+
+function renderConfigScreen(){
+  const cfg = getSbConfig();
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <h2 style="margin:0 0 4px; text-align:center; font-size:17px;">${L('db_connect_title')}</h2>
+      <p class="hint" style="text-align:center; margin-bottom:20px;">${L('db_connect_subtitle')}</p>
+      <div class="field"><label>${L('db_project_url')}</label><input id="cfgUrl" placeholder="https://xxxxxxxx.supabase.co" value="${cfg?cfg.url:''}"></div>
+      <div class="field"><label>${L('db_anon_key')}</label><input id="cfgKey" placeholder="eyJhbGciOi..." value="${cfg?cfg.key:''}"></div>
+      <button class="btn btn-primary" id="cfgSubmit" style="width:100%; justify-content:center; padding:11px;">${L('db_connect_btn')}</button>
+      <p class="hint" style="margin-top:16px; text-align:center;">${L('db_connect_help')}</p>
+    </div>
+  </div>`;
+}
+function bindConfigEvents(){
+  const btn = document.getElementById("cfgSubmit");
+  if(!btn) return;
+  btn.onclick = async ()=>{
+    const url = document.getElementById("cfgUrl").value.trim();
+    const key = document.getElementById("cfgKey").value.trim();
+    if(!url || !key){ toast(L('auth_toast_fields_required')); return; }
+    setSbConfig(url, key);
+    await boot();
+  };
+}
+
+function renderLoadingScreen(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card" style="text-align:center;">
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <p class="hint">${L('db_loading')}</p>
+    </div>
+  </div>`;
+}
+
+function renderConfigErrorScreen(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card" style="text-align:center;">
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <p class="hint" style="color:var(--bad);">${L('db_connect_error')}</p>
+      <button class="btn btn-primary" id="cfgRetry" style="width:100%; justify-content:center; padding:11px; margin-top:12px;">${L('db_connect_btn')}</button>
+      <button class="btn btn-ghost btn-sm" id="cfgChange" style="width:100%; justify-content:center; margin-top:8px;">${L('db_change_connection')}</button>
+    </div>
+  </div>`;
+}
+function bindConfigErrorEvents(){
+  const retry = document.getElementById("cfgRetry");
+  if(retry) retry.onclick = ()=> boot();
+  const change = document.getElementById("cfgChange");
+  if(change) change.onclick = ()=>{ clearSbConfig(); APP_STATE="need_config"; render(); };
+}
+
+function renderSetupScreen(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${getLogoHtml()}</div>
+      <h2 style="margin:0 0 4px; text-align:center; font-size:17px;">${L('auth_setup_title')}</h2>
+      <p class="hint" style="text-align:center; margin-bottom:20px;">${L('auth_setup_subtitle')}</p>
+      <div class="field"><label>${L('auth_username')}</label><input id="suUsername" autocomplete="username"></div>
+      <div class="field"><label>${L('auth_password')}</label><input type="password" id="suPassword" autocomplete="new-password"></div>
+      <div class="field"><label>${L('auth_confirm_password')}</label><input type="password" id="suConfirm" autocomplete="new-password"></div>
+      <button class="btn btn-primary" id="suSubmit" style="width:100%; justify-content:center; padding:11px;">${L('auth_create_admin')}</button>
+      <p class="hint" style="margin-top:16px; text-align:center;">${L('security_local_note')}</p>
+    </div>
+  </div>`;
+}
+function bindSetupEvents(){
+  const btn = document.getElementById("suSubmit");
+  if(!btn) return;
+  const submit = async ()=>{
+    const username = document.getElementById("suUsername").value.trim();
+    const pass = document.getElementById("suPassword").value;
+    const confirmPass = document.getElementById("suConfirm").value;
+    if(!username || !pass || !confirmPass){ toast(L('auth_toast_fields_required')); return; }
+    if(pass.length<4){ toast(L('auth_toast_password_min')); return; }
+    if(pass!==confirmPass){ toast(L('auth_toast_password_mismatch')); return; }
+    btn.disabled = true;
+    const email = usernameToEmail(username);
+    const { data: signUpData, error: signUpError } = await SB.auth.signUp({ email, password: pass });
+    if(signUpError || !signUpData.user){ btn.disabled=false; toast(L('toast_sync_error')); console.error(signUpError); return; }
+    const { error: profError } = await SB.from("profiles").insert({ id: signUpData.user.id, username, role:"admin", created_by: username });
+    if(profError){ btn.disabled=false; toast(L('toast_sync_error')); console.error(profError); return; }
+    const ok = await establishProfileAndData();
+    btn.disabled = false;
+    if(!ok){ toast(L('toast_sync_error')); return; }
+    HAS_SESSION = true;
+    APP_STATE = "ready";
+    toast(L('auth_toast_admin_created'));
+    render();
+    setupRealtimeSync();
+  };
+  btn.onclick = submit;
+  document.querySelectorAll("#suUsername,#suPassword,#suConfirm").forEach(el=>{
+    el.addEventListener("keydown",(e)=>{ if(e.key==='Enter') submit(); });
+  });
+}
+
+function renderLoginScreen(){
+  return `
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${getLogoHtml()}</div>
+      <h2 style="margin:0 0 4px; text-align:center; font-size:17px;">${DB.company.name}</h2>
+      <p class="hint" style="text-align:center; margin-bottom:20px;">${L('auth_login_subtitle')}</p>
+      <div class="field"><label>${L('auth_username')}</label><input id="liUsername" autocomplete="username"></div>
+      <div class="field"><label>${L('auth_password')}</label><input type="password" id="liPassword" autocomplete="current-password"></div>
+      <button class="btn btn-primary" id="liSubmit" style="width:100%; justify-content:center; padding:11px;">${L('auth_login_btn')}</button>
+    </div>
+  </div>`;
+}
+function bindLoginEvents(){
+  const btn = document.getElementById("liSubmit");
+  if(!btn) return;
+  const submit = async ()=>{
+    const username = document.getElementById("liUsername").value.trim();
+    const pass = document.getElementById("liPassword").value;
+    if(!username || !pass){ toast(L('auth_toast_fields_required')); return; }
+    btn.disabled = true;
+    const email = usernameToEmail(username);
+    const { error: signInError } = await SB.auth.signInWithPassword({ email, password: pass });
+    if(signInError){ btn.disabled=false; toast(L('auth_toast_invalid_login')); return; }
+    const ok = await establishProfileAndData();
+    btn.disabled = false;
+    if(!ok){ toast(L('auth_toast_invalid_login')); return; }
+    HAS_SESSION = true;
+    APP_STATE = "ready";
+    toast(L('auth_toast_logged_in'));
+    render();
+    setupRealtimeSync();
+  };
+  btn.onclick = submit;
+  document.querySelectorAll("#liUsername,#liPassword").forEach(el=>{
+    el.addEventListener("keydown",(e)=>{ if(e.key==='Enter') submit(); });
+  });
+}
+
+function navItem(page, icon, label){
+  const active = ROUTE.page===page;
+  return `<div class="nav-item ${active?'active':''}" data-nav="${page}"><span class="ic">${icon}</span><span>${label}</span></div>`;
+}
+
+function sidebar(){
+  return `
+  <div class="sidebar ${SIDEBAR_OPEN?'open':''}" id="sidebarEl">
+    <div class="brand">
+      <div class="brand-mark">${getLogoHtml()}</div>
+      <div class="brand-text">
+        <div class="name">${DB.company.name}</div>
+        <div class="tag">${(DB.company.tagline||"").toUpperCase()}</div>
+      </div>
+    </div>
+    <div class="nav">
+      <div class="nav-group-label">${L('nav_group_summary')}</div>
+      ${navItem("dashboard","📊",L('nav_dashboard'))}
+      <div class="nav-group-label">${L('nav_group_accounts')}</div>
+      ${navItem("projects","🏗️",L('nav_projects'))}
+      ${navItem("banks","🏦",L('nav_banks'))}
+      ${navItem("cash","💵",L('nav_cash'))}
+      ${navItem("transactions","📒",L('nav_transactions'))}
+      <div class="nav-group-label">${L('nav_group_other')}</div>
+      ${navItem("reports","📈",L('nav_reports'))}
+      ${navItem("settings","⚙️",L('nav_settings'))}
+      ${isAdmin()? navItem("users","👤",L('nav_users')) : ""}
+    </div>
+    <div class="user-badge">
+      <div class="ub-name">${currentUser()? currentUser().username : ""}</div>
+      <div class="ub-role">${isAdmin()? L('role_admin') : L('role_user')}</div>
+      <button class="btn btn-sm" id="btnLogout" style="margin-top:8px; width:100%; justify-content:center; background:rgba(255,255,255,0.06); color:#eaf3f2; border-color:rgba(255,255,255,0.18);">${L('auth_logout')}</button>
+    </div>
+    <div class="sidebar-foot">© ${new Date().getFullYear()} GPE Ltd — ${L('sidebar_foot')}</div>
+  </div>`;
+}
+
+function pageTitleFor(){
+  const map = {
+    dashboard:[L('title_dashboard'),L('sub_dashboard')],
+    projects:[L('title_projects'),L('sub_projects')],
+    projectDetail:[L('title_projectDetail'),""],
+    banks:[L('title_banks'),L('sub_banks')],
+    bankDetail:[L('title_bankDetail'),""],
+    cash:[L('title_cash'),L('sub_cash')],
+    cashDetail:[L('title_cashDetail'),""],
+    transactions:[L('title_transactions'),L('sub_transactions')],
+    reports:[L('title_reports'),L('sub_reports')],
+    settings:[L('title_settings'),L('sub_settings')],
+    users:[L('nav_users'),L('user_management_hint')]
+  };
+  return map[ROUTE.page] || ["",""];
+}
+
+function topbar(){
+  const [title, sub] = pageTitleFor();
+  return `
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="menu-toggle" id="btnMenuToggle" aria-label="${L('menu_toggle_label')}">☰</button>
+      <div>
+        <h1>${title}</h1>
+        ${sub? `<div class="sub">${sub}</div>`:""}
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <button class="btn btn-excel btn-sm" id="btnExcelExport">📊 ${L('btn_excel_export')}</button>
+      <button class="btn btn-sm" id="btnExport">⬇️ ${L('btn_backup_export')}</button>
+      <button class="btn btn-primary btn-sm" id="btnQuickAdd">+ ${L('btn_new_txn')}</button>
+    </div>
+  </div>`;
+}
+
+function pageBody(){
+  switch(ROUTE.page){
+    case "dashboard": return pageDashboard();
+    case "projects": return pageProjects();
+    case "projectDetail": return pageProjectDetail(ROUTE.id);
+    case "banks": return pageAccounts("bank");
+    case "bankDetail": return pageAccountDetail("bank", ROUTE.id);
+    case "cash": return pageAccounts("cash");
+    case "cashDetail": return pageAccountDetail("cash", ROUTE.id);
+    case "transactions": return pageTransactions();
+    case "reports": return pageReports();
+    case "settings": return pageSettings();
+    case "users": return pageUsers();
+    default: return "";
+  }
+}
+
+/* ---------------- Dashboard ---------------- */
+function pageDashboard(){
+  const tot = companyTotals();
+  const bankBal = totalBankBalance();
+  const cashBal = totalCashBalance();
+  const recent = [...DB.transactions].sort((a,b)=>b.date.localeCompare(a.date)).slice(0,8);
+
+  return `
+  <div class="grid grid-4">
+    <div class="card stat-card stat-lime"><div class="bolt">${BOLT_SVG}</div>
+      <div class="label">${L('total_income')}</div><div class="value num">${fmt(tot.income)}</div>
+      <div class="delta" style="color:var(--ok)">${L('across_all')}</div></div>
+    <div class="card stat-card stat-red"><div class="bolt">${BOLT_SVG}</div>
+      <div class="label">${L('total_expense')}</div><div class="value num">${fmt(tot.expense)}</div>
+      <div class="delta" style="color:var(--bad)">${L('across_all')}</div></div>
+    <div class="card stat-card stat-teal"><div class="bolt">${BOLT_SVG}</div>
+      <div class="label">${L('net_profit')}</div><div class="value num" style="color:${tot.net>=0?'var(--ok)':'var(--bad)'}">${fmt(tot.net)}</div>
+      <div class="delta">${L('income_minus_expense')}</div></div>
+    <div class="card stat-card stat-amber"><div class="bolt">${BOLT_SVG}</div>
+      <div class="label">${L('total_cash_bank')}</div><div class="value num">${fmt(bankBal+cashBal)}</div>
+      <div class="delta">${L('bank_label')} ${fmt(bankBal)} · ${L('cash_label')} ${fmt(cashBal)}</div></div>
+  </div>
+
+  <div class="section-title">
+    <div><div class="eyebrow">${L('eyebrow_active')}</div><h2>${L('project_summary')}</h2></div>
+    <button class="btn btn-sm" data-nav="projects">${L('view_all')}</button>
+  </div>
+  <div class="grid grid-3">
+    ${DB.projects.slice(0,3).map(p=>projectCard(p)).join("") || emptyState("🏗️",L('no_projects_yet'))}
+  </div>
+
+  <div class="section-title">
+    <div><div class="eyebrow">${L('eyebrow_recent')}</div><h2>${L('latest_txns')}</h2></div>
+    <button class="btn btn-sm" data-nav="transactions">${L('view_all')}</button>
+  </div>
+  ${transactionsTable(recent, {showProject:true})}
+  `;
+}
+
+function projectCard(p){
+  const t = projectTotals(p.id);
+  const pct = p.budget>0? Math.min(100, Math.round((t.income/p.budget)*100)) : 0;
+  const sclass = p.status==='done'?'status-done': p.status==='hold'?'status-hold':'status-running';
+  return `
+  <div class="proj-card" data-nav="projectDetail" data-id="${p.id}" style="cursor:pointer;">
+    <div class="top">
+      <div><div class="pname">${p.name}</div><div class="pclient">${p.client||"—"}</div></div>
+      <span class="status-pill ${sclass}">${statusLabel(p.status)}</span>
+    </div>
+    <div class="proj-nums">
+      <div><div class="l">${L('income')}</div><div class="v" style="color:var(--ok)">${fmt(t.income)}</div></div>
+      <div><div class="l">${L('expense')}</div><div class="v" style="color:var(--bad)">${fmt(t.expense)}</div></div>
+      <div><div class="l">${L('net')}</div><div class="v">${fmt(t.net)}</div></div>
+    </div>
+    ${p.budget? `<div class="hint" style="margin-top:12px;">${L('budget_progress',{b:fmt(p.budget),p:pct})}</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`:""}
+  </div>`;
+}
+
+function emptyState(icon, msg){
+  return `<div class="card empty-state" style="grid-column:1/-1;">
+    <div class="big-ic">${icon}</div><div>${msg}</div>
+  </div>`;
+}
+
+function transactionsTable(list, opts={}){
+  if(list.length===0) return `<div class="table-wrap"><table><tbody><tr class="empty-row"><td>${L('no_txns_found')}</td></tr></tbody></table></div>`;
+  return `
+  <div class="table-wrap">
+  <table>
+    <thead><tr>
+      <th>${L('col_date')}</th><th>${L('col_type')}</th>${opts.showProject?`<th>${L('col_project')}</th>`:""}<th>${L('col_account')}</th><th>${L('col_category')}</th><th>${L('col_description')}</th><th style="text-align:right;">${L('col_amount')}</th><th></th>
+    </tr></thead>
+    <tbody>
+      ${list.map(t=>rowTxn(t, opts)).join("")}
+    </tbody>
+  </table>
+  </div>`;
+}
+function rowTxn(t, opts={}){
+  const typeTag = t.type==="income"? `<span class="tag tag-income">${L('income')}</span>`
+    : t.type==="expense"? `<span class="tag tag-expense">${L('expense')}</span>`
+    : `<span class="tag tag-transfer">${L('transfer')}</span>`;
+  const accTag = `<span class="tag ${t.accountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.accountType,t.accountId)}</span>`;
+  const amtClass = t.type==="income"?"pos": t.type==="expense"?"neg":"";
+  const sign = t.type==="income"?"+": t.type==="expense"?"-":"";
+  return `<tr>
+    <td>${fmtDate(t.date)}</td>
+    <td>${typeTag}</td>
+    ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
+    <td>${accTag}${t.type==='transfer'?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
+    <td>${t.category||"-"}</td>
+    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${t.voucherNo?`<div class="hint" style="margin-top:2px;">${L('voucher_no_short')}: ${t.voucherNo}</div>`:""}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}</td>
+    <td class="amt ${amtClass}">${sign}${fmt(t.amount)}</td>
+    <td style="text-align:right; white-space:nowrap;">
+      <button class="btn btn-ghost btn-sm" data-edit-txn="${t.id}">✎</button>
+      <button class="btn btn-ghost btn-sm" data-del-txn="${t.id}" style="color:var(--red-600)">🗑</button>
+    </td>
+  </tr>`;
+}
+
+/* ---------------- Projects ---------------- */
+function pageProjects(){
+  return `
+  <div class="section-title" style="margin-top:0;">
+    <div></div>
+    <button class="btn btn-primary btn-sm" id="btnAddProject">+ ${L('new_project')}</button>
+  </div>
+  <div class="grid grid-3">
+    ${DB.projects.map(p=>projectCard(p)).join("") || emptyState("🏗️",L('no_projects_yet'))}
+  </div>`;
+}
+
+function pageProjectDetail(id){
+  const p = DB.projects.find(x=>x.id===id);
+  if(!p) return `<div class="empty-state">${L('project_not_found')}</div>`;
+  const t = projectTotals(id);
+  const txns = DB.transactions.filter(x=>x.projectId===id).sort((a,b)=>b.date.localeCompare(a.date));
+  const sclass = p.status==='done'?'status-done': p.status==='hold'?'status-hold':'status-running';
+  return `
+  <div class="crumb"><a data-nav="projects">${L('nav_projects')}</a> / ${p.name}</div>
+  <div class="card" style="margin-top:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+      <div>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <h2 style="margin:0; font-size:19px;">${p.name}</h2>
+          <span class="status-pill ${sclass}">${statusLabel(p.status)}</span>
+        </div>
+        <div class="hint" style="margin-top:4px;">${L('client_label')}: ${p.client||"—"} &nbsp;·&nbsp; ${L('start_label')}: ${fmtDate(p.startDate)} ${p.budget?`&nbsp;·&nbsp; ${L('budget_label')}: ${fmt(p.budget)}`:""}</div>
+        ${p.notes? `<div class="hint" style="margin-top:6px;">${p.notes}</div>`:""}
+        ${p.createdBy? `<div class="hint" style="margin-top:6px;">${L('col_created_by')}: ${p.createdBy}${p.createdAt?(' · '+fmtDate(p.createdAt.slice(0,10))):''}</div>`:""}
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn btn-sm" data-edit-project="${p.id}">✎ ${L('edit')}</button>
+        <button class="btn btn-danger btn-sm" data-del-project="${p.id}">🗑 ${L('delete')}</button>
+      </div>
+    </div>
+    <div style="margin-top:14px;">
+      <div class="hint">Client-facing progress: ${p.progressPercent||0}%</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${p.progressPercent||0}%"></div></div>
+    </div>
+    ${p.trackingToken? `
+    <div class="hint" style="margin-top:10px; word-break:break-all;">
+      🔗 Tracking link: https://gpebd.com/track.html?token=${p.trackingToken}
+      <button class="btn btn-sm" style="margin-left:6px;" onclick="navigator.clipboard.writeText('https://gpebd.com/track.html?token=${p.trackingToken}'); toast('Link copied');">Copy</button>
+    </div>`:""}
+  </div>
+
+  <div class="grid grid-3" style="margin-top:16px;">
+    <div class="card stat-card stat-lime"><div class="label">${L('total_income')}</div><div class="value num" style="font-size:20px;">${fmt(t.income)}</div></div>
+    <div class="card stat-card stat-red"><div class="label">${L('total_expense')}</div><div class="value num" style="font-size:20px;">${fmt(t.expense)}</div></div>
+    <div class="card stat-card stat-teal"><div class="label">${L('net_profit')}</div><div class="value num" style="font-size:20px; color:${t.net>=0?'var(--ok)':'var(--bad)'}">${fmt(t.net)}</div></div>
+  </div>
+
+  <div class="section-title">
+    <div><h2>${L('this_project_txns')}</h2></div>
+    <button class="btn btn-primary btn-sm" data-add-txn-project="${p.id}">+ ${L('add_txn')}</button>
+  </div>
+  ${transactionsTable(txns)}
+  `;
+}
+
+/* ---------------- Bank / Cash accounts ---------------- */
+function pageAccounts(kind){
+  const list = kind==="bank"? DB.banks : DB.cash;
+  const label = kind==="bank"? L('new_bank_account') : L('new_cash_account');
+  return `
+  <div class="section-title" style="margin-top:0;">
+    <div></div>
+    <button class="btn btn-primary btn-sm" id="btnAdd${kind==='bank'?'Bank':'Cash'}">+ ${label}</button>
+  </div>
+  <div class="grid grid-3">
+    ${list.map(a=>accountCard(kind,a)).join("") || emptyState(kind==='bank'?"🏦":"💵", kind==='bank'?L('no_bank_yet'):L('no_cash_yet'))}
+  </div>`;
+}
+function accountCard(kind, a){
+  const bal = accountBalance(kind, a.id);
+  return `
+  <div class="proj-card" data-nav="${kind}Detail" data-id="${a.id}" style="cursor:pointer;">
+    <div class="top">
+      <div>
+        <div class="pname">${a.name}</div>
+        <div class="pclient">${kind==='bank'? (a.bankName+(a.branch?(" · "+a.branch):"")) : L('cash_fund')}</div>
+      </div>
+      <span class="status-pill ${kind==='bank'?'status-running':'status-hold'}">${kind==='bank'?L('bank_label'):L('cash_label')}</span>
+    </div>
+    ${kind==='bank' && a.accNo? `<div class="hint" style="margin-top:8px;">${L('account_no_short')}: ${a.accNo}</div>`:""}
+    <div style="margin-top:14px;">
+      <div class="hint">${L('current_balance')}</div>
+      <div class="num" style="font-size:21px; font-weight:700; color:${bal>=0?'var(--teal-700)':'var(--bad)'}">${fmt(bal)}</div>
+    </div>
+  </div>`;
+}
+function pageAccountDetail(kind, id){
+  const list = kind==="bank"? DB.banks : DB.cash;
+  const a = list.find(x=>x.id===id);
+  if(!a) return `<div class="empty-state">${L('account_not_found')}</div>`;
+  const bal = accountBalance(kind, id);
+  const txns = DB.transactions.filter(t=>
+    (t.accountType===kind && t.accountId===id) || (t.toAccountType===kind && t.toAccountId===id)
+  ).sort((a,b)=>b.date.localeCompare(a.date));
+  return `
+  <div class="crumb"><a data-nav="${kind}">${kind==='bank'?L('nav_banks'):L('nav_cash')}</a> / ${a.name}</div>
+  <div class="card" style="margin-top:10px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="margin:0; font-size:19px;">${a.name}</h2>
+        <div class="hint" style="margin-top:4px;">
+          ${kind==='bank'? `${a.bankName||""} ${a.branch?('· '+a.branch):''} ${a.accNo?('· '+L('account_no_short')+' '+a.accNo):''}` : L('cash_fund')}
+          &nbsp;·&nbsp; ${L('opening_balance')}: ${fmt(a.opening)}
+        </div>
+        ${a.createdBy? `<div class="hint" style="margin-top:4px;">${L('col_created_by')}: ${a.createdBy}${a.createdAt?(' · '+fmtDate(a.createdAt.slice(0,10))):''}</div>`:""}
+      </div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <div style="text-align:right; margin-right:10px;">
+          <div class="hint">${L('current_balance')}</div>
+          <div class="num" style="font-size:20px; font-weight:700; color:${bal>=0?'var(--teal-700)':'var(--bad)'}">${fmt(bal)}</div>
+        </div>
+        <button class="btn btn-sm" data-edit-account="${kind}:${a.id}">✎</button>
+        <button class="btn btn-danger btn-sm" data-del-account="${kind}:${a.id}">🗑</button>
+      </div>
+    </div>
+  </div>
+  <div class="section-title">
+    <div><h2>${L('txn_history')}</h2></div>
+    <button class="btn btn-primary btn-sm" data-add-txn-account="${kind}:${a.id}">+ ${L('add_txn')}</button>
+  </div>
+  ${transactionsTable(txns, {showProject:true})}
+  `;
+}
+
+/* ---------------- Transactions (global ledger) ---------------- */
+function applyFilters(list){
+  return list.filter(t=>{
+    if(FILTERS.type && t.type!==FILTERS.type) return false;
+    if(FILTERS.projectId==="__company__" && t.projectId) return false;
+    if(FILTERS.projectId && FILTERS.projectId!=="__company__" && t.projectId!==FILTERS.projectId) return false;
+    if(FILTERS.accountType && t.accountType!==FILTERS.accountType) return false;
+    if(FILTERS.accountId && t.accountId!==FILTERS.accountId) return false;
+    if(FILTERS.from && t.date < FILTERS.from) return false;
+    if(FILTERS.to && t.date > FILTERS.to) return false;
+    if(FILTERS.q){
+      const q = FILTERS.q.toLowerCase();
+      const hay = (t.desc||"")+" "+(t.category||"")+" "+(t.voucherNo||"")+" "+(t.chequeNo||"");
+      if(!hay.toLowerCase().includes(q)) return false;
+    }
+    return true;
+  });
+}
+function pageTransactions(){
+  const list = applyFilters([...DB.transactions]).sort((a,b)=>b.date.localeCompare(a.date));
+  const sumIn = list.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
+  const sumOut = list.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  return `
+  <div class="filter-bar">
+    <select id="fType"><option value="">${L('all_types')}</option><option value="income" ${FILTERS.type==='income'?'selected':''}>${L('income')}</option><option value="expense" ${FILTERS.type==='expense'?'selected':''}>${L('expense')}</option><option value="transfer" ${FILTERS.type==='transfer'?'selected':''}>${L('transfer')}</option></select>
+    <select id="fProject">
+      <option value="">${L('all_projects')}</option>
+      <option value="__company__" ${FILTERS.projectId==='__company__'?'selected':''}>${L('general_company')}</option>
+      ${DB.projects.map(p=>`<option value="${p.id}" ${FILTERS.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
+    </select>
+    <select id="fAccType"><option value="">${L('all_accounts')}</option><option value="bank" ${FILTERS.accountType==='bank'?'selected':''}>${L('bank_label')}</option><option value="cash" ${FILTERS.accountType==='cash'?'selected':''}>${L('cash_label')}</option></select>
+    <input type="date" id="fFrom" value="${FILTERS.from}">
+    <input type="date" id="fTo" value="${FILTERS.to}">
+    <input type="text" id="fQ" placeholder="${L('search_placeholder')}" value="${FILTERS.q}" style="min-width:160px;">
+    <button class="btn btn-sm btn-ghost" id="fClear">${L('reset')}</button>
+  </div>
+  <div class="grid grid-3" style="margin-bottom:16px;">
+    <div class="card stat-card stat-lime"><div class="label">${L('filtered_income')}</div><div class="value num" style="font-size:19px;">${fmt(sumIn)}</div></div>
+    <div class="card stat-card stat-red"><div class="label">${L('filtered_expense')}</div><div class="value num" style="font-size:19px;">${fmt(sumOut)}</div></div>
+    <div class="card stat-card stat-teal"><div class="label">${L('net')}</div><div class="value num" style="font-size:19px;">${fmt(sumIn-sumOut)}</div></div>
+  </div>
+  ${transactionsTable(list, {showProject:true})}
+  `;
+}
+
+/* ---------------- Reports ---------------- */
+function pageReports(){
+  const tot = companyTotals();
+  return `
+  <div class="section-title" style="margin-top:0;">
+    <div></div>
+    <button class="btn btn-excel btn-sm" id="btnExcelExport2">📊 ${L('btn_excel_export')}</button>
+  </div>
+  <div class="grid grid-3">
+    <div class="card stat-card stat-lime"><div class="label">${L('total_income_alltime')}</div><div class="value num" style="font-size:20px;">${fmt(tot.income)}</div></div>
+    <div class="card stat-card stat-red"><div class="label">${L('total_expense_alltime')}</div><div class="value num" style="font-size:20px;">${fmt(tot.expense)}</div></div>
+    <div class="card stat-card stat-teal"><div class="label">${L('net_profit')}</div><div class="value num" style="font-size:20px; color:${tot.net>=0?'var(--ok)':'var(--bad)'}">${fmt(tot.net)}</div></div>
+  </div>
+
+  <div class="section-title"><div><h2>${L('project_financial_summary')}</h2></div>
+    <button class="btn btn-sm" onclick="window.print()">🖨 ${L('print')}</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>${L('col_project')}</th><th>${L('col_client')}</th><th style="text-align:right;">${L('income')}</th><th style="text-align:right;">${L('expense')}</th><th style="text-align:right;">${L('net')}</th></tr></thead>
+      <tbody>
+        ${DB.projects.map(p=>{
+          const t = projectTotals(p.id);
+          return `<tr><td>${p.name}</td><td>${p.client||'-'}</td><td class="amt pos">${fmt(t.income)}</td><td class="amt neg">${fmt(t.expense)}</td><td class="amt">${fmt(t.net)}</td></tr>`;
+        }).join("") || `<tr class="empty-row"><td colspan="5">${L('no_projects')}</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title"><div><h2>${L('account_wise_balance')}</h2></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>${L('col_account_name')}</th><th>${L('col_type')}</th><th style="text-align:right;">${L('col_opening')}</th><th style="text-align:right;">${L('col_current_balance')}</th></tr></thead>
+      <tbody>
+        ${DB.banks.map(b=>`<tr><td>${b.name}</td><td><span class="tag tag-bank">${L('bank_label')}</span></td><td class="amt">${fmt(b.opening)}</td><td class="amt">${fmt(accountBalance('bank',b.id))}</td></tr>`).join("")}
+        ${DB.cash.map(c=>`<tr><td>${c.name}</td><td><span class="tag tag-cash">${L('cash_label')}</span></td><td class="amt">${fmt(c.opening)}</td><td class="amt">${fmt(accountBalance('cash',c.id))}</td></tr>`).join("")}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section-title"><div><h2>${L('category_expense_analysis')}</h2></div></div>
+  ${categoryBreakdown()}
+  `;
+}
+function categoryBreakdown(){
+  const map = {};
+  DB.transactions.filter(t=>t.type==='expense').forEach(t=>{
+    const cat = t.category||L('other_category');
+    map[cat] = (map[cat]||0) + Number(t.amount);
+  });
+  const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const max = entries.length? entries[0][1] : 1;
+  if(entries.length===0) return `<div class="card empty-state">${L('no_expense_found')}</div>`;
+  return `<div class="card">
+    ${entries.map(([cat,amt])=>`
+      <div style="margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:5px;"><span>${cat}</span><span class="num" style="font-weight:600;">${fmt(amt)}</span></div>
+        <div class="progress-bar"><div class="progress-fill" style="width:${Math.round((amt/max)*100)}%; background:linear-gradient(90deg,var(--orange-600),var(--red-600));"></div></div>
+      </div>
+    `).join("")}
+  </div>`;
+}
+
+/* ---------------- Settings ---------------- */
+function pageSettings(){
+  return `
+  <div class="grid grid-2">
+    <div class="card">
+      <h3 style="margin-top:0;">${L('company_info')}</h3>
+      <div class="field"><label>${L('company_name')}</label><input id="setCompanyName" value="${DB.company.name}"></div>
+      <div class="field"><label>${L('tagline')}</label><input id="setCompanyTag" value="${DB.company.tagline}"></div>
+      <div class="field">
+        <label>${L('logo_label')}</label>
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:56px; height:56px; border:1px solid var(--line); border-radius:10px; padding:6px; display:flex; align-items:center; justify-content:center; background:#fbfdfc;">
+            <div style="width:100%; height:100%;">${getLogoHtml()}</div>
+          </div>
+          <div style="display:flex; flex-direction:column; gap:6px;">
+            <label class="btn btn-sm" style="margin:0; width:fit-content;">${L('change_logo')}<input type="file" id="logoFileInput" accept="image/*" style="display:none;"></label>
+            ${DB.company.logo? `<button class="btn btn-ghost btn-sm" id="btnResetLogo" style="width:fit-content; color:var(--red-600);">${L('reset_default_logo')}</button>`:""}
+          </div>
+        </div>
+        <div class="hint">${L('logo_hint')}</div>
+      </div>
+      <button class="btn btn-primary btn-sm" id="btnSaveCompany">${L('save')}</button>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">${L('data_management')}</h3>
+      <p class="hint">${L('data_mgmt_hint')}</p>
+      <div style="display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;">
+        <button class="btn btn-excel btn-sm" id="btnExcelExport3">📊 ${L('btn_excel_export')}</button>
+        <button class="btn btn-sm" id="btnExport2">⬇️ ${L('btn_backup_export')}</button>
+        ${isAdmin()? `<button class="btn btn-danger btn-sm" id="btnResetAll">${L('delete_all_data')}</button>`:""}
+      </div>
+      ${isAdmin()? `<button class="btn btn-ghost btn-sm" id="btnChangeDbConnection" style="margin-top:12px;">🔌 ${L('db_change_connection')}</button>`:""}
+    </div>
+  </div>
+  <div class="grid grid-2" style="margin-top:16px;">
+    <div class="card">
+      <h3 style="margin-top:0;">${L('my_account')}</h3>
+      <p class="hint" style="margin-top:0;">${L('logged_in_as')}: <strong>${currentUser()? currentUser().username : ""}</strong> (${isAdmin()? L('role_admin') : L('role_user')})</p>
+      <div class="field"><label>${L('current_password')}</label><input type="password" id="cpCurrent" autocomplete="current-password"></div>
+      <div class="field"><label>${L('new_password')}</label><input type="password" id="cpNew" autocomplete="new-password"></div>
+      <div class="field"><label>${L('confirm_new_password')}</label><input type="password" id="cpConfirm" autocomplete="new-password"></div>
+      <button class="btn btn-primary btn-sm" id="btnChangePassword">${L('change_password_btn')}</button>
+    </div>
+  </div>
+  <div class="grid grid-2" style="margin-top:16px;">
+    <div class="card">
+      <h3 style="margin-top:0;">${L('income_categories')}</h3>
+      <div id="incomeCatList">${categoryListHtml('income')}</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input id="newIncomeCat" placeholder="${L('new_category')}" style="flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:9px;">
+        <button class="btn btn-sm" id="addIncomeCat">${L('add')}</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;">${L('expense_categories')}</h3>
+      <div id="expenseCatList">${categoryListHtml('expense')}</div>
+      <div style="display:flex; gap:8px; margin-top:10px;">
+        <input id="newExpenseCat" placeholder="${L('new_category')}" style="flex:1; padding:8px 12px; border:1px solid var(--line); border-radius:9px;">
+        <button class="btn btn-sm" id="addExpenseCat">${L('add')}</button>
+      </div>
+    </div>
+  </div>
+  `;
+}
+function categoryListHtml(kind){
+  const cats = DB.categories[kind];
+  if(cats.length===0) return `<div class="hint">${L('no_categories')}</div>`;
+  return cats.map(c=>`<span class="tag ${kind==='income'?'tag-income':'tag-expense'}" style="margin:0 6px 6px 0; display:inline-flex; align-items:center; gap:6px;">${c} <span data-del-cat="${kind}:${c}" style="cursor:pointer; font-weight:700;">×</span></span>`).join("");
+}
+
+/* ---------------- Users (admin only) ---------------- */
+function pageUsers(){
+  if(!isAdmin()){
+    return `<div class="card empty-state">${L('user_management_hint')}</div>`;
+  }
+  const me = currentUser();
+  const rows = DB.users.map(u=>{
+    const isSelf = me && me.id===u.id;
+    const dateStr = u.createdAt? fmtDate(u.createdAt.slice(0,10)) : "-";
+    return `<tr>
+      <td>${u.username}</td>
+      <td><span class="tag ${u.role==='admin'?'tag-income':'tag-bank'}">${u.role==='admin'?L('role_admin'):L('role_user')}</span></td>
+      <td><span class="tag ${u.disabled?'tag-expense':'tag-income'}">${u.disabled?L('status_disabled'):L('status_active')}</span></td>
+      <td>${dateStr}</td>
+      <td style="text-align:right; white-space:nowrap;">
+        ${!isSelf? `<button class="btn btn-ghost btn-sm" data-toggle-user="${u.id}" style="color:${u.disabled?'var(--ok)':'var(--red-600)'}">${u.disabled?L('enable_user_btn'):L('disable_user_btn')}</button>`:""}
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+  <p class="hint" style="margin-top:0;">${L('user_management_hint')}</p>
+  <div class="table-wrap" style="margin-top:12px;">
+    <table>
+      <thead><tr><th>${L('auth_username')}</th><th>${L('role_label')}</th><th>${L('status_label')}</th><th>${L('created_on')}</th><th></th></tr></thead>
+      <tbody>${rows || `<tr class="empty-row"><td colspan="5">-</td></tr>`}</tbody>
+    </table>
+  </div>
+
+  <div class="section-title"><div><h2>${L('new_user')}</h2></div></div>
+  <div class="card" style="max-width:420px;">
+    <div class="field"><label>${L('auth_username')}</label><input id="nuUsername" autocomplete="off"></div>
+    <div class="field"><label>${L('auth_password')}</label><input type="password" id="nuPassword" autocomplete="new-password"></div>
+    <div class="field"><label>${L('role_label')}</label>
+      <select id="nuRole">
+        <option value="user">${L('role_user')}</option>
+        <option value="admin">${L('role_admin')}</option>
+      </select>
+    </div>
+    <div class="field"><label>${L('your_password_confirm')}</label><input type="password" id="nuAdminPassword" autocomplete="current-password"></div>
+    <p class="hint" style="margin-top:-6px; margin-bottom:14px;">${L('your_password_confirm_hint')}</p>
+    <button class="btn btn-primary btn-sm" id="btnCreateUser">${L('create_user_btn')}</button>
+  </div>
+  <p class="hint" style="margin-top:16px;">${L('forgot_password_admin_hint')}</p>
+  <p class="hint" style="margin-top:8px;">${L('security_local_note')}</p>
+  `;
+}
+
+/* ====================================================================
+   FORMS: Project / Account / Transaction
+   ==================================================================== */
+function formProject(existing){
+  const p = existing || {name:"",client:"",startDate:todayStr(),budget:"",status:"running",notes:"",progressPercent:0};
+  openModal(`
+    <div class="modal-head"><h3>${existing? L('edit_project'):L('new_project')}</h3><button class="close-x" id="mClose">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>${L('project_name_req')}</label><input id="pfName" value="${p.name}" placeholder="${L('project_name_ph')}"></div>
+      <div class="field"><label>${L('client_authority')}</label><input id="pfClient" value="${p.client}"></div>
+      <div class="field-row">
+        <div class="field"><label>${L('start_date')}</label><input type="date" id="pfDate" value="${p.startDate}"></div>
+        <div class="field"><label>${L('budget_bdt')}</label><input type="number" id="pfBudget" value="${p.budget}"></div>
+      </div>
+      <div class="field"><label>${L('status_label')}</label>
+        <select id="pfStatus">
+          <option value="running" ${p.status==='running'?'selected':''}>${L('status_running')}</option>
+          <option value="hold" ${p.status==='hold'?'selected':''}>${L('status_hold')}</option>
+          <option value="done" ${p.status==='done'?'selected':''}>${L('status_done')}</option>
+        </select>
+      </div>
+      <div class="field"><label>Client-facing progress (%)</label><input type="number" id="pfProgress" min="0" max="100" value="${p.progressPercent||0}"></div>
+      <div class="field"><label>${L('notes')}</label><textarea id="pfNotes" rows="2">${p.notes||""}</textarea></div>
+      ${existing && existing.trackingToken? `
+      <div class="field">
+        <label>Client tracking link</label>
+        <div style="display:flex; gap:6px;">
+          <input id="pfTrackLink" readonly value="https://gpebd.com/track.html?token=${existing.trackingToken}">
+          <button type="button" class="btn btn-sm" id="pfCopyLink">Copy</button>
+        </div>
+      </div>`:""}
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="mCancel">${L('cancel')}</button>
+      <button class="btn btn-primary" id="pfSave">${L('save')}</button>
+    </div>
+  `, (overlay)=>{
+    overlay.querySelector("#mClose").onclick = closeModal;
+    overlay.querySelector("#mCancel").onclick = closeModal;
+    const copyBtn = overlay.querySelector("#pfCopyLink");
+    if(copyBtn){ copyBtn.onclick = ()=>{ const inp = overlay.querySelector("#pfTrackLink"); inp.select(); navigator.clipboard.writeText(inp.value); toast("Link copied"); }; }
+    overlay.querySelector("#pfSave").onclick = async ()=>{
+      const name = overlay.querySelector("#pfName").value.trim();
+      if(!name){ toast(L('toast_project_name_required')); return; }
+      const data = {
+        name,
+        client: overlay.querySelector("#pfClient").value.trim(),
+        startDate: overlay.querySelector("#pfDate").value || todayStr(),
+        budget: Number(overlay.querySelector("#pfBudget").value)||0,
+        status: overlay.querySelector("#pfStatus").value,
+        progressPercent: Math.max(0, Math.min(100, Number(overlay.querySelector("#pfProgress").value)||0)),
+        notes: overlay.querySelector("#pfNotes").value.trim()
+      };
+      const saveBtn = overlay.querySelector("#pfSave"); saveBtn.disabled = true;
+      let error;
+      if(existing){
+        stampUpdated(data);
+        ({error} = await SB.from("projects").update(projectToRow({...existing, ...data})).eq("id", existing.id));
+      } else {
+        stampCreated(data);
+        ({error} = await SB.from("projects").insert(projectToRow(data)));
+      }
+      saveBtn.disabled = false;
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      closeModal(); await refreshAndRender(); toast(L('toast_project_saved'));
+    };
+  });
+}
+
+function formAccount(kind, existing){
+  const isBank = kind==="bank";
+  const a = existing || {name:"", bankName:"", branch:"", accNo:"", opening:""};
+  openModal(`
+    <div class="modal-head"><h3>${existing? L('edit_account'): (isBank?L('new_bank_account'):L('new_cash_account'))}</h3><button class="close-x" id="mClose">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>${L('account_name_req')}</label><input id="afName" value="${a.name}" placeholder="${isBank?L('account_name_ph_bank'):L('account_name_ph_cash')}"></div>
+      ${isBank? `
+      <div class="field"><label>${L('bank_name_label')}</label><input id="afBankName" value="${a.bankName||''}"></div>
+      <div class="field-row">
+        <div class="field"><label>${L('branch_label')}</label><input id="afBranch" value="${a.branch||''}"></div>
+        <div class="field"><label>${L('acc_no_label')}</label><input id="afAccNo" value="${a.accNo||''}"></div>
+      </div>`:""}
+      <div class="field"><label>${L('opening_balance_bdt')}</label><input type="number" id="afOpening" value="${a.opening}"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="mCancel">${L('cancel')}</button>
+      <button class="btn btn-primary" id="afSave">${L('save')}</button>
+    </div>
+  `, (overlay)=>{
+    overlay.querySelector("#mClose").onclick = closeModal;
+    overlay.querySelector("#mCancel").onclick = closeModal;
+    overlay.querySelector("#afSave").onclick = async ()=>{
+      const name = overlay.querySelector("#afName").value.trim();
+      if(!name){ toast(L('toast_name_required')); return; }
+      const data = { name, opening:Number(overlay.querySelector("#afOpening").value)||0 };
+      if(isBank){
+        data.bankName = overlay.querySelector("#afBankName").value.trim();
+        data.branch = overlay.querySelector("#afBranch").value.trim();
+        data.accNo = overlay.querySelector("#afAccNo").value.trim();
+      }
+      const table = isBank? "bank_accounts" : "cash_accounts";
+      const toRow = isBank? bankToRow : cashToRow;
+      const saveBtn = overlay.querySelector("#afSave"); saveBtn.disabled = true;
+      let error;
+      if(existing){
+        stampUpdated(data);
+        ({error} = await SB.from(table).update(toRow({...existing, ...data})).eq("id", existing.id));
+      } else {
+        stampCreated(data);
+        ({error} = await SB.from(table).insert(toRow(data)));
+      }
+      saveBtn.disabled = false;
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      closeModal(); await refreshAndRender(); toast(L('toast_account_saved'));
+    };
+  });
+}
+
+function formTransaction(existing, presets={}){
+  const t = existing || {
+    date: todayStr(), type:"expense", scope: presets.projectId? "project":"company",
+    projectId: presets.projectId || "", accountType: presets.accountType || (DB.banks[0]?"bank":"cash"),
+    accountId: presets.accountId || (DB.banks[0]?.id || DB.cash[0]?.id || ""),
+    toAccountType:"", toAccountId:"", category:"", desc:"", amount:"", voucherNo:"",
+    method:"cash", chequeNo:"", chequeBankName:"", withdrawnBy:""
+  };
+  const renderCatOptions = (type)=> (DB.categories[type]||[]).map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join("");
+  const bankOpts = (selType,selId)=> DB.banks.map(b=>`<option value="${b.id}" ${selType==='bank'&&selId===b.id?'selected':''}>${b.name}</option>`).join("");
+  const cashOpts = (selType,selId)=> DB.cash.map(c=>`<option value="${c.id}" ${selType==='cash'&&selId===c.id?'selected':''}>${c.name}</option>`).join("");
+
+  openModal(`
+    <div class="modal-head"><h3>${existing? L('edit_transaction'):L('new_transaction')}</h3><button class="close-x" id="mClose">×</button></div>
+    <div class="modal-body">
+      <div class="field">
+        <label>${L('type_label')}</label>
+        <div class="radio-row">
+          <label class="radio-chip ${t.type==='income'?'checked':''}"><input type="radio" name="txType" value="income" ${t.type==='income'?'checked':''}>${L('income')}</label>
+          <label class="radio-chip ${t.type==='expense'?'checked':''}"><input type="radio" name="txType" value="expense" ${t.type==='expense'?'checked':''}>${L('expense')}</label>
+          <label class="radio-chip ${t.type==='transfer'?'checked':''}"><input type="radio" name="txType" value="transfer" ${t.type==='transfer'?'checked':''}>${L('transfer')}</label>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>${L('date_label')}</label><input type="date" id="tfDate" value="${t.date}"></div>
+        <div class="field"><label>${L('amount_bdt_req')}</label><input type="number" id="tfAmount" value="${t.amount}" placeholder="0"></div>
+      </div>
+      <div class="field" id="tfProjectWrap">
+        <label>${L('project_optional')}</label>
+        <select id="tfProject">
+          <option value="">${L('general_company')}</option>
+          ${DB.projects.map(p=>`<option value="${p.id}" ${t.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field"><label id="tfAccLabel">${L('account_from_to')}</label>
+          <select id="tfAccType">
+            <option value="bank" ${t.accountType==='bank'?'selected':''}>${L('bank_label')}</option>
+            <option value="cash" ${t.accountType==='cash'?'selected':''}>${L('cash_label')}</option>
+          </select>
+        </div>
+        <div class="field"><label>&nbsp;</label>
+          <select id="tfAccount"></select>
+        </div>
+      </div>
+      <div class="field-row" id="tfToWrap" style="display:${t.type==='transfer'?'grid':'none'};">
+        <div class="field"><label>${L('recipient_acc_type')}</label>
+          <select id="tfToType">
+            <option value="bank" ${t.toAccountType==='bank'?'selected':''}>${L('bank_label')}</option>
+            <option value="cash" ${t.toAccountType==='cash'?'selected':''}>${L('cash_label')}</option>
+          </select>
+        </div>
+        <div class="field"><label>${L('recipient_account')}</label>
+          <select id="tfToAccount"></select>
+        </div>
+      </div>
+      <div class="field" id="tfCatWrap">
+        <label>${L('category_label')}</label>
+        <select id="tfCategory"></select>
+      </div>
+      <div class="field"><label>${L('description_label')}</label><input id="tfDesc" value="${t.desc||''}" placeholder="${L('description_ph')}"></div>
+      <div class="field"><label>${L('voucher_no_label')}</label><input id="tfVoucherNo" value="${t.voucherNo||''}" placeholder="${L('voucher_no_ph')}"></div>
+      <div class="field" id="tfMethodWrap" style="display:none;">
+        <label>${L('payment_method')}</label>
+        <div class="radio-row">
+          <label class="radio-chip ${(t.method!=='cheque'&&t.method!=='bank_transfer')?'checked':''}"><input type="radio" name="txMethod" value="cash" ${(t.method!=='cheque'&&t.method!=='bank_transfer')?'checked':''}>${L('cash_method')}</label>
+          <label class="radio-chip ${t.method==='bank_transfer'?'checked':''}" id="tfMethodBankChip" style="display:none;"><input type="radio" name="txMethod" value="bank_transfer" ${t.method==='bank_transfer'?'checked':''}>${L('bank_transfer_method')}</label>
+          <label class="radio-chip ${t.method==='cheque'?'checked':''}"><input type="radio" name="txMethod" value="cheque" ${t.method==='cheque'?'checked':''}>${L('cheque_method')}</label>
+        </div>
+      </div>
+      <div class="field-row" id="tfInChequeWrap" style="display:none;">
+        <div class="field"><label>${L('cheque_no_label')}</label><input id="tfInChequeNo" value="${t.chequeNo||''}" placeholder="${L('cheque_no_ph')}"></div>
+        <div class="field"><label>${L('cheque_bank_name_label')}</label><input id="tfInChequeBank" value="${t.chequeBankName||''}" placeholder="${L('cheque_bank_name_ph')}"></div>
+      </div>
+      <div class="field-row" id="tfChequeWrap" style="display:none;">
+        <div class="field"><label>${L('withdrawal_cheque_no_label')}</label><input id="tfChequeNo" value="${t.chequeNo||''}" placeholder="${L('cheque_no_ph')}"></div>
+        <div class="field"><label>${L('withdrawn_by_label')}</label><input id="tfWithdrawnBy" value="${t.withdrawnBy||''}" placeholder="${L('withdrawn_by_ph')}"></div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="mCancel">${L('cancel')}</button>
+      <button class="btn btn-primary" id="tfSave">${L('save')}</button>
+    </div>
+  `, (overlay)=>{
+    const accTypeSel = overlay.querySelector("#tfAccType");
+    const accSel = overlay.querySelector("#tfAccount");
+    const toTypeSel = overlay.querySelector("#tfToType");
+    const toAccSel = overlay.querySelector("#tfToAccount");
+    const catSel = overlay.querySelector("#tfCategory");
+    const catWrap = overlay.querySelector("#tfCatWrap");
+    const toWrap = overlay.querySelector("#tfToWrap");
+    const projWrap = overlay.querySelector("#tfProjectWrap");
+    const chequeWrap = overlay.querySelector("#tfChequeWrap");
+    const methodWrap = overlay.querySelector("#tfMethodWrap");
+    const inChequeWrap = overlay.querySelector("#tfInChequeWrap");
+
+    function refreshAccOptions(){
+      accSel.innerHTML = accTypeSel.value==='bank'? bankOpts(t.accountType,t.accountId) : cashOpts(t.accountType,t.accountId);
+      if(!accSel.value && accSel.options.length) accSel.selectedIndex = 0;
+      refreshChequeVisibility();
+    }
+    function refreshToOptions(){
+      toAccSel.innerHTML = toTypeSel.value==='bank'? bankOpts(t.toAccountType,t.toAccountId) : cashOpts(t.toAccountType,t.toAccountId);
+      if(!toAccSel.value && toAccSel.options.length) toAccSel.selectedIndex = 0;
+    }
+    function refreshChequeVisibility(){
+      const type = overlay.querySelector('input[name="txType"]:checked').value;
+      const isBankWithdrawal = type==='expense' && accTypeSel.value==='bank';
+      chequeWrap.style.display = isBankWithdrawal? 'grid':'none';
+
+      const isIncome = type==='income';
+      methodWrap.style.display = isIncome? 'block':'none';
+
+      const bankChip = overlay.querySelector("#tfMethodBankChip");
+      const isBankAccount = accTypeSel.value==='bank';
+      bankChip.style.display = isBankAccount? 'inline-flex':'none';
+      if(!isBankAccount){
+        const bankRadio = overlay.querySelector('input[name="txMethod"][value="bank_transfer"]');
+        if(bankRadio && bankRadio.checked){
+          const cashRadio = overlay.querySelector('input[name="txMethod"][value="cash"]');
+          cashRadio.checked = true;
+          overlay.querySelectorAll('#tfMethodWrap .radio-chip').forEach(c=>c.classList.remove('checked'));
+          cashRadio.closest('.radio-chip').classList.add('checked');
+        }
+      }
+
+      const methodEl = overlay.querySelector('input[name="txMethod"]:checked');
+      const isCheque = isIncome && methodEl && methodEl.value==='cheque';
+      inChequeWrap.style.display = isCheque? 'grid':'none';
+    }
+    function refreshCatOptions(){
+      const type = overlay.querySelector('input[name="txType"]:checked').value;
+      if(type==='transfer'){ catWrap.style.display='none'; toWrap.style.display='grid'; projWrap.style.display='none'; }
+      else { catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
+        catSel.innerHTML = renderCatOptions(type);
+      }
+      refreshChequeVisibility();
+    }
+    refreshAccOptions(); refreshToOptions(); refreshCatOptions();
+
+    overlay.querySelectorAll('input[name="txMethod"]').forEach(r=>{
+      r.onchange = ()=>{
+        overlay.querySelectorAll('#tfMethodWrap .radio-chip').forEach(c=>c.classList.remove('checked'));
+        r.closest('.radio-chip').classList.add('checked');
+        refreshChequeVisibility();
+      };
+    });
+
+    accTypeSel.onchange = refreshAccOptions;
+    toTypeSel.onchange = refreshToOptions;
+    overlay.querySelectorAll('input[name="txType"]').forEach(r=>{
+      r.onchange = ()=>{
+        overlay.querySelectorAll('.radio-chip').forEach(c=>c.classList.remove('checked'));
+        r.closest('.radio-chip').classList.add('checked');
+        refreshCatOptions();
+      };
+    });
+
+    overlay.querySelector("#mClose").onclick = closeModal;
+    overlay.querySelector("#mCancel").onclick = closeModal;
+    overlay.querySelector("#tfSave").onclick = async ()=>{
+      const amount = Number(overlay.querySelector("#tfAmount").value);
+      if(!amount || amount<=0){ toast(L('toast_valid_amount')); return; }
+      const type = overlay.querySelector('input[name="txType"]:checked').value;
+      const data = {
+        date: overlay.querySelector("#tfDate").value || todayStr(),
+        type,
+        amount,
+        desc: overlay.querySelector("#tfDesc").value.trim(),
+        voucherNo: overlay.querySelector("#tfVoucherNo").value.trim(),
+        accountType: accTypeSel.value,
+        accountId: accSel.value,
+      };
+      if(type==='transfer'){
+        data.toAccountType = toTypeSel.value;
+        data.toAccountId = toAccSel.value;
+        data.projectId = null; data.category = L('transfer');
+        if(data.accountType===data.toAccountType && data.accountId===data.toAccountId){
+          toast(L('toast_same_account_transfer')); return;
+        }
+      } else {
+        const pid = overlay.querySelector("#tfProject").value;
+        data.projectId = pid || null;
+        data.category = catSel.value || (DB.categories[type][0]||"");
+      }
+      if(type==='expense' && data.accountType==='bank'){
+        data.chequeNo = overlay.querySelector("#tfChequeNo").value.trim();
+        data.withdrawnBy = overlay.querySelector("#tfWithdrawnBy").value.trim();
+        data.method = ""; data.chequeBankName = "";
+      } else if(type==='income'){
+        const methodEl = overlay.querySelector('input[name="txMethod"]:checked');
+        data.method = methodEl? methodEl.value : "cash";
+        if(data.method==='cheque'){
+          data.chequeNo = overlay.querySelector("#tfInChequeNo").value.trim();
+          data.chequeBankName = overlay.querySelector("#tfInChequeBank").value.trim();
+        } else {
+          data.chequeNo = ""; data.chequeBankName = "";
+        }
+        data.withdrawnBy = "";
+      } else {
+        data.chequeNo = ""; data.withdrawnBy = ""; data.method = ""; data.chequeBankName = "";
+      }
+      if(!data.accountId){ toast(L('toast_select_account')); return; }
+      const saveBtn = overlay.querySelector("#tfSave"); saveBtn.disabled = true;
+      let error;
+      if(existing){
+        stampUpdated(data);
+        ({error} = await SB.from("transactions").update(txnToRow({...existing, ...data})).eq("id", existing.id));
+      } else {
+        stampCreated(data);
+        ({error} = await SB.from("transactions").insert(txnToRow(data)));
+      }
+      saveBtn.disabled = false;
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      closeModal(); await refreshAndRender(); toast(L('toast_txn_saved'));
+    };
+  });
+}
+
+/* ====================================================================
+   EVENT BINDING
+   ==================================================================== */
+function bindGlobalEvents(){
+  document.querySelectorAll("[data-nav]").forEach(el=>{
+    el.addEventListener("click", ()=> navigate(el.dataset.nav, el.dataset.id));
+  });
+  document.querySelectorAll("[data-setlang]").forEach(el=>{
+    el.addEventListener("click", ()=> setLang(el.dataset.setlang));
+  });
+
+  const menuToggle = document.getElementById("btnMenuToggle");
+  if(menuToggle) menuToggle.onclick = ()=>{ SIDEBAR_OPEN = !SIDEBAR_OPEN; render(); };
+  const overlay = document.getElementById("sidebarOverlay");
+  if(overlay) overlay.onclick = ()=>{ SIDEBAR_OPEN = false; render(); };
+
+  const qa = document.getElementById("btnQuickAdd");
+  if(qa) qa.onclick = ()=> formTransaction(null, {});
+
+  const addProj = document.getElementById("btnAddProject");
+  if(addProj) addProj.onclick = ()=> formProject(null);
+
+  const addBank = document.getElementById("btnAddBank");
+  if(addBank) addBank.onclick = ()=> formAccount("bank", null);
+  const addCash = document.getElementById("btnAddCash");
+  if(addCash) addCash.onclick = ()=> formAccount("cash", null);
+
+  document.querySelectorAll("[data-edit-project]").forEach(el=>{
+    el.addEventListener("click",(e)=>{ e.stopPropagation(); const p = DB.projects.find(x=>x.id===el.dataset.editProject); formProject(p); });
+  });
+  document.querySelectorAll("[data-del-project]").forEach(el=>{
+    el.addEventListener("click",async (e)=>{ e.stopPropagation();
+      if(confirm(L('confirm_del_project'))){
+        const id = el.dataset.delProject;
+        const { error } = await SB.from("projects").delete().eq("id", id);
+        if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+        navigate("projects"); await refreshAndRender(); toast(L('toast_project_deleted'));
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-edit-account]").forEach(el=>{
+    el.addEventListener("click",(e)=>{ e.stopPropagation(); const [kind,id]=el.dataset.editAccount.split(":");
+      const a = (kind==='bank'?DB.banks:DB.cash).find(x=>x.id===id); formAccount(kind,a); });
+  });
+  document.querySelectorAll("[data-del-account]").forEach(el=>{
+    el.addEventListener("click",async (e)=>{ e.stopPropagation(); const [kind,id]=el.dataset.delAccount.split(":");
+      if(confirm(L('confirm_del_account'))){
+        const table = kind==='bank'? "bank_accounts" : "cash_accounts";
+        const { error } = await SB.from(table).delete().eq("id", id);
+        if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+        navigate(kind); await refreshAndRender(); toast(L('toast_account_deleted'));
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-add-txn-project]").forEach(el=>{
+    el.addEventListener("click",()=> formTransaction(null, {projectId: el.dataset.addTxnProject}));
+  });
+  document.querySelectorAll("[data-add-txn-account]").forEach(el=>{
+    el.addEventListener("click",()=>{ const [kind,id]=el.dataset.addTxnAccount.split(":"); formTransaction(null,{accountType:kind, accountId:id}); });
+  });
+  document.querySelectorAll("[data-edit-txn]").forEach(el=>{
+    el.addEventListener("click",(e)=>{ e.stopPropagation(); const t = DB.transactions.find(x=>x.id===el.dataset.editTxn); formTransaction(t); });
+  });
+  document.querySelectorAll("[data-del-txn]").forEach(el=>{
+    el.addEventListener("click",async (e)=>{ e.stopPropagation();
+      if(confirm(L('confirm_del_txn'))){
+        const { error } = await SB.from("transactions").delete().eq("id", el.dataset.delTxn);
+        if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+        await refreshAndRender(); toast(L('toast_txn_deleted'));
+      }
+    });
+  });
+
+  /* filters */
+  ["fType","fProject","fAccType","fFrom","fTo","fQ"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(!el) return;
+    const ev = (id==='fQ')? 'input':'change';
+    el.addEventListener(ev, ()=>{
+      FILTERS.type = document.getElementById("fType").value;
+      FILTERS.projectId = document.getElementById("fProject").value;
+      FILTERS.accountType = document.getElementById("fAccType").value;
+      FILTERS.from = document.getElementById("fFrom").value;
+      FILTERS.to = document.getElementById("fTo").value;
+      FILTERS.q = document.getElementById("fQ").value;
+      render();
+    });
+  });
+  const fClear = document.getElementById("fClear");
+  if(fClear) fClear.onclick = ()=>{ FILTERS = {type:"",scope:"",projectId:"",accountType:"",accountId:"",from:"",to:"",q:""}; render(); };
+
+  /* settings */
+  const saveCompany = document.getElementById("btnSaveCompany");
+  if(saveCompany) saveCompany.onclick = async ()=>{
+    const name = document.getElementById("setCompanyName").value.trim() || DB.company.name;
+    const tagline = document.getElementById("setCompanyTag").value.trim();
+    saveCompany.disabled = true;
+    const { error } = await SB.from("company").update({ name, tagline }).eq("id", 1);
+    saveCompany.disabled = false;
+    if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+    await refreshAndRender(); toast(L('toast_saved'));
+  };
+  const logoInput = document.getElementById("logoFileInput");
+  if(logoInput) logoInput.addEventListener("change", async (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    if(!file.type.startsWith("image/")){ toast(L('toast_only_images')); return; }
+    if(file.size > 2*1024*1024){ toast(L('toast_image_too_big')); return; }
+    const reader = new FileReader();
+    reader.onload = async (ev)=>{
+      const { error } = await SB.from("company").update({ logo: ev.target.result }).eq("id", 1);
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_logo_changed'));
+    };
+    reader.readAsDataURL(file);
+  });
+  const resetLogo = document.getElementById("btnResetLogo");
+  if(resetLogo) resetLogo.onclick = async ()=>{
+    const { error } = await SB.from("company").update({ logo: null }).eq("id", 1);
+    if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+    await refreshAndRender(); toast(L('toast_logo_reset'));
+  };
+  const changeDb = document.getElementById("btnChangeDbConnection");
+  if(changeDb) changeDb.onclick = async ()=>{
+    if(confirm(L('confirm_change_db'))){ await teardownRealtimeSync(); try{ await SB.auth.signOut(); }catch(e){} HAS_SESSION=false; CURRENT_PROFILE=null; clearSbConfig(); APP_STATE="need_config"; render(); }
+  };
+  const resetAll = document.getElementById("btnResetAll");
+  if(resetAll) resetAll.onclick = async ()=>{
+    if(!isAdmin()) return;
+    if(confirm(L('confirm_reset_all_1'))){
+      if(confirm(L('confirm_reset_all_2'))){
+        resetAll.disabled = true;
+        await Promise.all([
+          SB.from("transactions").delete().neq("id","00000000-0000-0000-0000-000000000000"),
+          SB.from("projects").delete().neq("id","00000000-0000-0000-0000-000000000000"),
+          SB.from("bank_accounts").delete().neq("id","00000000-0000-0000-0000-000000000000"),
+          SB.from("cash_accounts").delete().neq("id","00000000-0000-0000-0000-000000000000")
+        ]);
+        resetAll.disabled = false;
+        navigate("dashboard"); await refreshAndRender(); toast(L('toast_all_data_deleted'));
+      }
+    }
+  };
+  ["income","expense"].forEach(kind=>{
+    const addBtn = document.getElementById(kind==='income'?"addIncomeCat":"addExpenseCat");
+    if(addBtn) addBtn.onclick = async ()=>{
+      const inp = document.getElementById(kind==='income'?"newIncomeCat":"newExpenseCat");
+      const v = inp.value.trim();
+      if(v && !DB.categories[kind].includes(v)){
+        const { error } = await SB.from("categories").insert({ kind, name:v });
+        if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+        await refreshAndRender(); toast(L('toast_category_added'));
+      }
+    };
+  });
+  document.querySelectorAll("[data-del-cat]").forEach(el=>{
+    el.addEventListener("click",async ()=>{
+      const [kind,cat] = el.dataset.delCat.split(":");
+      const { error } = await SB.from("categories").delete().eq("kind",kind).eq("name",cat);
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender();
+    });
+  });
+
+  /* export snapshot */
+  const doExport = ()=>{
+    const blob = new Blob([JSON.stringify(DB,null,2)], {type:"application/json"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `GPE_Accounts_Backup_${todayStr()}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+    toast(L('toast_backup_downloaded'));
+  };
+  const be1 = document.getElementById("btnExport"); if(be1) be1.onclick = doExport;
+  const be2 = document.getElementById("btnExport2"); if(be2) be2.onclick = doExport;
+
+  const be3 = document.getElementById("btnExcelExport"); if(be3) be3.onclick = exportAllReportsExcel;
+  const be4 = document.getElementById("btnExcelExport2"); if(be4) be4.onclick = exportAllReportsExcel;
+  const be5 = document.getElementById("btnExcelExport3"); if(be5) be5.onclick = exportAllReportsExcel;
+
+  /* auth: logout */
+  const logoutBtn = document.getElementById("btnLogout");
+  if(logoutBtn) logoutBtn.onclick = async ()=>{
+    await teardownRealtimeSync();
+    try{ await SB.auth.signOut(); }catch(e){}
+    HAS_SESSION = false; CURRENT_PROFILE = null;
+    navigate("dashboard");
+  };
+
+  /* auth: change own password */
+  const cpBtn = document.getElementById("btnChangePassword");
+  if(cpBtn) cpBtn.onclick = async ()=>{
+    const me = currentUser();
+    if(!me) return;
+    const cur = document.getElementById("cpCurrent").value;
+    const p1 = document.getElementById("cpNew").value;
+    const p2 = document.getElementById("cpConfirm").value;
+    if(!cur || !p1 || !p2){ toast(L('auth_toast_fields_required')); return; }
+    if(p1.length<4){ toast(L('auth_toast_password_min')); return; }
+    if(p1!==p2){ toast(L('auth_toast_password_mismatch')); return; }
+    cpBtn.disabled = true;
+    const email = usernameToEmail(me.username);
+    const { error: verifyErr } = await SB.auth.signInWithPassword({ email, password: cur });
+    if(verifyErr){ cpBtn.disabled=false; toast(L('toast_current_password_wrong')); return; }
+    const { error } = await SB.auth.updateUser({ password: p1 });
+    cpBtn.disabled = false;
+    if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+    toast(L('toast_password_changed'));
+  };
+
+  /* users management (admin only) */
+  const createUserBtn = document.getElementById("btnCreateUser");
+  if(createUserBtn) createUserBtn.onclick = async ()=>{
+    const username = document.getElementById("nuUsername").value.trim();
+    const pass = document.getElementById("nuPassword").value;
+    const role = document.getElementById("nuRole").value;
+    const adminPass = document.getElementById("nuAdminPassword").value;
+    const me = currentUser();
+    if(!username || !pass || !adminPass){ toast(L('auth_toast_fields_required')); return; }
+    if(pass.length<4){ toast(L('auth_toast_password_min')); return; }
+    if(DB.users.some(u=>u.username.toLowerCase()===username.toLowerCase())){ toast(L('toast_username_taken')); return; }
+    if(!me){ return; }
+    createUserBtn.disabled = true;
+
+    const newEmail = usernameToEmail(username);
+    const { data: signUpData, error: signUpErr } = await SB.auth.signUp({ email:newEmail, password:pass });
+    if(signUpErr || !signUpData.user){
+      createUserBtn.disabled = false; toast(L('toast_sync_error')); console.error(signUpErr); return;
+    }
+    const { error: profErr } = await SB.from("profiles").insert({ id: signUpData.user.id, username, role:"user", created_by: me.username });
+
+    const adminEmail = usernameToEmail(me.username);
+    const { error: reAuthErr } = await SB.auth.signInWithPassword({ email:adminEmail, password:adminPass });
+    if(reAuthErr){
+      // couldn't restore admin session (wrong password re-entered) — resync from whatever session is now active
+      createUserBtn.disabled = false;
+      toast(L('toast_wrong_own_password'));
+      await boot();
+      return;
+    }
+    let promoteErr = null;
+    if(role==='admin'){
+      ({error: promoteErr} = await SB.from("profiles").update({ role:'admin', updated_by: me.username }).eq('id', signUpData.user.id));
+    }
+    createUserBtn.disabled = false;
+    if(profErr || promoteErr){ toast(L('toast_sync_error')); console.error(profErr||promoteErr); }
+    await refreshAndRender(); toast(L('toast_user_created'));
+  };
+  document.querySelectorAll("[data-toggle-user]").forEach(el=>{
+    el.addEventListener("click",async ()=>{
+      const u = DB.users.find(x=>x.id===el.dataset.toggleUser);
+      if(!u) return;
+      const me = currentUser();
+      if(me && me.id===u.id){ toast(L('toast_cannot_delete_self')); return; }
+      const willDisable = !u.disabled;
+      if(willDisable && u.role==='admin' && DB.users.filter(x=>x.role==='admin' && !x.disabled).length<=1){ toast(L('toast_cannot_delete_last_admin')); return; }
+      if(willDisable && !confirm(L('confirm_delete_user'))) return;
+      const { error } = await SB.from("profiles").update({ disabled: willDisable, updated_by: me?me.username:null }).eq("id", u.id);
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(willDisable? L('toast_user_deleted') : L('toast_user_enabled'));
+    });
+  });
+}
+
+boot();
+</script>
+</body>
+</html>
