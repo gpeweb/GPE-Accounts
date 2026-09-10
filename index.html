@@ -377,6 +377,8 @@ const DICT = {
   budget_progress:{bn:"বাজেট {b} এর মধ্যে {p}% আদায়", en:"{p}% collected of {b} budget"},
 
   no_projects_yet:{bn:"এখনো কোনো প্রজেক্ট যোগ করা হয়নি", en:"No projects added yet"},
+  search_project_ph:{bn:"কোড বা নাম দিয়ে খুঁজুন (যেমন GPE-0007)...", en:"Search by code or name (e.g. GPE-0007)..."},
+  no_project_match:{bn:"কোনো প্রজেক্ট মেলেনি", en:"No matching project found"},
   no_bank_yet:{bn:"এখনো কোনো ব্যাংক হিসাব যোগ করা হয়নি", en:"No bank account added yet"},
   no_cash_yet:{bn:"এখনো কোনো ক্যাশ হিসাব যোগ করা হয়নি", en:"No cash account added yet"},
   no_txns_found:{bn:"কোনো লেনদেন পাওয়া যায়নি", en:"No transactions found"},
@@ -384,6 +386,7 @@ const DICT = {
   col_date:{bn:"তারিখ", en:"Date"},
   col_type:{bn:"ধরণ", en:"Type"},
   col_project:{bn:"প্রজেক্ট", en:"Project"},
+  col_project_code:{bn:"প্রজেক্ট কোড", en:"Project Code"},
   col_account:{bn:"হিসাব", en:"Account"},
   col_category:{bn:"খাত", en:"Category"},
   col_description:{bn:"বিবরণ", en:"Description"},
@@ -654,6 +657,20 @@ function statusLabel(status){
 function typeLabel(type){
   return type==='income'? L('income') : type==='expense'? L('expense') : L('transfer');
 }
+function projectCodeLabel(p){
+  if(!p || p.projectCode==null) return "";
+  return "GPE-" + String(p.projectCode).padStart(4,'0');
+}
+function findProjectByCodeOrName(query){
+  const q = String(query).trim().toLowerCase();
+  if(!q) return null;
+  const numMatch = q.replace(/^gpe-?/,'').replace(/^0+/,'') || "0";
+  return DB.projects.find(p=>{
+    if(p.projectCode!=null && String(p.projectCode)===numMatch) return true;
+    if(projectCodeLabel(p).toLowerCase()===q) return true;
+    return false;
+  }) || null;
+}
 
 /* ---------------- Data layer (Supabase cloud database) ---------------- */
 const SB_CONFIG_KEY = "gpe_supabase_config";
@@ -695,7 +712,7 @@ function defaultDB(){
 let DB = defaultDB();
 
 /* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
-function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||""}; }
+function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||"", projectCode:(r.project_code!=null? Number(r.project_code) : null)}; }
 function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
@@ -953,13 +970,13 @@ function exportAllReportsExcel(){
   XLSX.utils.book_append_sheet(wb, wsSummary, L('xl_sheet_summary'));
 
   // Projects sheet
-  const projRows = [[L('col_project'), L('col_client'), L('col_status'), L('col_budget'), L('total_income'), L('total_expense'), L('net')]];
+  const projRows = [[L('col_project_code'), L('col_project'), L('col_client'), L('col_status'), L('col_budget'), L('total_income'), L('total_expense'), L('net')]];
   DB.projects.forEach(p=>{
     const t = projectTotals(p.id);
-    projRows.push([p.name, p.client||'', statusLabel(p.status), Number(p.budget)||0, t.income, t.expense, t.net]);
+    projRows.push([projectCodeLabel(p), p.name, p.client||'', statusLabel(p.status), Number(p.budget)||0, t.income, t.expense, t.net]);
   });
   const wsProj = XLSX.utils.aoa_to_sheet(projRows);
-  wsProj['!cols'] = [{wch:32},{wch:22},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14}];
+  wsProj['!cols'] = [{wch:12},{wch:32},{wch:22},{wch:12},{wch:14},{wch:14},{wch:14},{wch:14}];
   XLSX.utils.book_append_sheet(wb, wsProj, L('xl_sheet_projects'));
 
   // Bank accounts sheet
@@ -1312,7 +1329,10 @@ function projectCard(p){
   return `
   <div class="proj-card" data-nav="projectDetail" data-id="${p.id}" style="cursor:pointer;">
     <div class="top">
-      <div><div class="pname">${p.name}</div><div class="pclient">${p.client||"—"}</div></div>
+      <div>
+        <div class="pname">${p.name}</div>
+        <div class="pclient">${projectCodeLabel(p)? `<span class="num" style="color:var(--teal-500); font-weight:700;">${projectCodeLabel(p)}</span> · `:""}${p.client||"—"}</div>
+      </div>
       <span class="status-pill ${sclass}">${statusLabel(p.status)}</span>
     </div>
     <div class="proj-nums">
@@ -1367,14 +1387,25 @@ function rowTxn(t, opts={}){
 }
 
 /* ---------------- Projects ---------------- */
+let PROJECT_SEARCH = "";
 function pageProjects(){
+  const q = PROJECT_SEARCH.trim().toLowerCase();
+  const filtered = !q? DB.projects : DB.projects.filter(p=>{
+    if(p.name.toLowerCase().includes(q)) return true;
+    if((p.client||"").toLowerCase().includes(q)) return true;
+    if(projectCodeLabel(p).toLowerCase().includes(q)) return true;
+    if(p.projectCode!=null && String(p.projectCode).includes(q.replace(/\D/g,''))) return true;
+    return false;
+  });
   return `
   <div class="section-title" style="margin-top:0;">
-    <div></div>
+    <div style="flex:1; min-width:200px; max-width:320px;">
+      <input type="text" id="projectSearchInput" value="${PROJECT_SEARCH}" placeholder="${L('search_project_ph')}" style="width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:9px; font-size:13.5px; font-family:inherit;">
+    </div>
     <button class="btn btn-primary btn-sm" id="btnAddProject">+ ${L('new_project')}</button>
   </div>
   <div class="grid grid-3">
-    ${DB.projects.map(p=>projectCard(p)).join("") || emptyState("🏗️",L('no_projects_yet'))}
+    ${filtered.map(p=>projectCard(p)).join("") || emptyState("🔍", q? L('no_project_match') : L('no_projects_yet'))}
   </div>`;
 }
 
@@ -1391,6 +1422,7 @@ function pageProjectDetail(id){
       <div>
         <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
           <h2 style="margin:0; font-size:19px;">${p.name}</h2>
+          ${projectCodeLabel(p)? `<span class="tag" style="background:#eaf5f4; color:var(--teal-700); font-family:'IBM Plex Mono',monospace;">${projectCodeLabel(p)}</span>`:""}
           <span class="status-pill ${sclass}">${statusLabel(p.status)}</span>
         </div>
         <div class="hint" style="margin-top:4px;">${L('client_label')}: ${p.client||"—"} &nbsp;·&nbsp; ${L('start_label')}: ${fmtDate(p.startDate)} ${p.budget?`&nbsp;·&nbsp; ${L('budget_label')}: ${fmt(p.budget)}`:""}</div>
@@ -1560,12 +1592,12 @@ function pageReports(){
   </div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>${L('col_project')}</th><th>${L('col_client')}</th><th style="text-align:right;">${L('income')}</th><th style="text-align:right;">${L('expense')}</th><th style="text-align:right;">${L('net')}</th></tr></thead>
+      <thead><tr><th>${L('col_project_code')}</th><th>${L('col_project')}</th><th>${L('col_client')}</th><th style="text-align:right;">${L('income')}</th><th style="text-align:right;">${L('expense')}</th><th style="text-align:right;">${L('net')}</th></tr></thead>
       <tbody>
         ${DB.projects.map(p=>{
           const t = projectTotals(p.id);
-          return `<tr><td>${p.name}</td><td>${p.client||'-'}</td><td class="amt pos">${fmt(t.income)}</td><td class="amt neg">${fmt(t.expense)}</td><td class="amt">${fmt(t.net)}</td></tr>`;
-        }).join("") || `<tr class="empty-row"><td colspan="5">${L('no_projects')}</td></tr>`}
+          return `<tr><td class="num">${projectCodeLabel(p)}</td><td>${p.name}</td><td>${p.client||'-'}</td><td class="amt pos">${fmt(t.income)}</td><td class="amt neg">${fmt(t.expense)}</td><td class="amt">${fmt(t.net)}</td></tr>`;
+        }).join("") || `<tr class="empty-row"><td colspan="6">${L('no_projects')}</td></tr>`}
       </tbody>
     </table>
   </div>
@@ -2079,6 +2111,17 @@ function bindGlobalEvents(){
 
   const addProj = document.getElementById("btnAddProject");
   if(addProj) addProj.onclick = ()=> formProject(null);
+
+  const projSearch = document.getElementById("projectSearchInput");
+  if(projSearch){
+    projSearch.addEventListener("input", ()=>{
+      PROJECT_SEARCH = projSearch.value;
+      const cursorPos = projSearch.selectionStart;
+      render();
+      const el2 = document.getElementById("projectSearchInput");
+      if(el2){ el2.focus(); el2.setSelectionRange(cursorPos, cursorPos); }
+    });
+  }
 
   const addBank = document.getElementById("btnAddBank");
   if(addBank) addBank.onclick = ()=> formAccount("bank", null);
