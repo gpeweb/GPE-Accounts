@@ -521,6 +521,17 @@ const DICT = {
   toast_same_account_transfer:{bn:"একই হিসাবে স্থানান্তর সম্ভব নয়", en:"Cannot transfer to the same account"},
   toast_select_account:{bn:"একটি হিসাব নির্বাচন করুন", en:"Please select an account"},
   toast_txn_saved:{bn:"লেনদেন সংরক্ষিত হয়েছে", en:"Transaction saved"},
+  pending_edit_tag:{bn:"সম্পাদনা অনুমোদনের অপেক্ষায়", en:"Edit pending approval"},
+  edited_tag:{bn:"সম্পাদিত", en:"Edited"},
+  approved_by_short:{bn:"অনুমোদনকারী", en:"Approved by"},
+  approve_btn:{bn:"অনুমোদন করুন", en:"Approve"},
+  reject_btn:{bn:"বাতিল করুন", en:"Reject"},
+  non_admin_edit_note:{bn:"⚠️ আপনার করা পরিবর্তন সাথে সাথে প্রয়োগ হবে না — একজন অ্যাডমিনের অনুমোদনের অপেক্ষায় থাকবে।", en:"⚠️ Your change won't apply immediately — it will wait for an admin's approval."},
+  overwrite_pending_note:{bn:"⚠️ এই এন্ট্রিতে ইতিমধ্যে একটা সম্পাদনা অনুমোদনের অপেক্ষায় আছে। এখন জমা দিলে আগের প্রস্তাবটি প্রতিস্থাপিত হবে।", en:"⚠️ This entry already has an edit pending approval. Submitting now will replace that earlier proposal."},
+  toast_edit_submitted:{bn:"সম্পাদনা জমা হয়েছে — অ্যাডমিনের অনুমোদনের অপেক্ষায়", en:"Edit submitted — awaiting admin approval"},
+  toast_edit_approved:{bn:"সম্পাদনা অনুমোদন করা হয়েছে", en:"Edit approved"},
+  toast_edit_rejected:{bn:"সম্পাদনা বাতিল করা হয়েছে", en:"Edit rejected"},
+  confirm_reject_edit:{bn:"এই প্রস্তাবিত সম্পাদনা বাতিল করবেন? মূল তথ্য অপরিবর্তিত থাকবে।", en:"Reject this proposed edit? The original data will remain unchanged."},
   confirm_del_project:{bn:"এই প্রজেক্ট ও এর সকল লেনদেন মুছে ফেলা হবে। নিশ্চিত?", en:"This project and all its transactions will be deleted. Are you sure?"},
   toast_project_deleted:{bn:"প্রজেক্ট মুছে ফেলা হয়েছে", en:"Project deleted"},
   confirm_del_account:{bn:"এই হিসাব মুছে ফেলা হবে (লেনদেনগুলো থেকে যাবে তবে অসংযুক্ত হয়ে যাবে)। নিশ্চিত?", en:"This account will be deleted (its transactions will remain but become unlinked). Are you sure?"},
@@ -712,10 +723,11 @@ function defaultDB(){
 let DB = defaultDB();
 
 /* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
-function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||"", projectCode:(r.project_code!=null? Number(r.project_code) : null)}; }
-function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
-function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
-function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+function editStatusFields(r){ return {isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
+function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||"", projectCode:(r.project_code!=null? Number(r.project_code) : null), ...editStatusFields(r)}; }
+function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
+function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
+function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
 function mapUserRow(r){ return {id:r.id, username:r.username, role:r.role||"user", disabled:!!r.disabled, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 
 function projectToRow(p){ return {name:p.name, client:p.client||null, start_date:p.startDate||null, budget:p.budget||0, status:p.status||"running", notes:p.notes||null, created_by:p.createdBy||null, updated_by:p.updatedBy||null, progress_percent:(p.progressPercent!=null?p.progressPercent:0)}; }
@@ -1322,6 +1334,20 @@ function pageDashboard(){
   `;
 }
 
+function editStatusHtml(obj, kind, id){
+  const hasPending = !!obj.pendingEdit;
+  if(hasPending){
+    const approveBtns = isAdmin()? `
+      <div style="margin-top:8px; display:flex; gap:6px;">
+        <button class="btn btn-sm" style="background:var(--ok); color:#fff; border-color:var(--ok);" data-approve-edit-kind="${kind}" data-approve-edit-id="${id}">✓ ${L('approve_btn')}</button>
+        <button class="btn btn-sm btn-danger" data-reject-edit-kind="${kind}" data-reject-edit-id="${id}">✕ ${L('reject_btn')}</button>
+      </div>` : "";
+    return `<div class="hint" style="margin-top:10px; color:var(--orange-600); font-weight:600;">⏳ ${L('pending_edit_tag')} (${obj.pendingEditBy})</div>${approveBtns}`;
+  } else if(obj.isEdited){
+    return `<div class="hint" style="margin-top:10px;">✎ ${L('edited_tag')}: ${obj.lastEditedBy}${obj.lastApprovedBy && obj.lastApprovedBy!==obj.lastEditedBy? (' · '+L('approved_by_short')+': '+obj.lastApprovedBy):''}</div>`;
+  }
+  return "";
+}
 function projectCard(p){
   const t = projectTotals(p.id);
   const pct = p.budget>0? Math.min(100, Math.round((t.income/p.budget)*100)) : 0;
@@ -1341,6 +1367,7 @@ function projectCard(p){
       <div><div class="l">${L('net')}</div><div class="v">${fmt(t.net)}</div></div>
     </div>
     ${p.budget? `<div class="hint" style="margin-top:12px;">${L('budget_progress',{b:fmt(p.budget),p:pct})}</div><div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>`:""}
+    ${editStatusHtml(p, 'project', p.id)}
   </div>`;
 }
 
@@ -1371,17 +1398,25 @@ function rowTxn(t, opts={}){
   const accTag = `<span class="tag ${t.accountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.accountType,t.accountId)}</span>`;
   const amtClass = t.type==="income"?"pos": t.type==="expense"?"neg":"";
   const sign = t.type==="income"?"+": t.type==="expense"?"-":"";
+  const hasPending = !!t.pendingEdit;
+  const editStatusTag = hasPending
+    ? `<div class="hint" style="margin-top:2px; color:var(--orange-600); font-weight:600;">⏳ ${L('pending_edit_tag')} (${t.pendingEditBy})</div>`
+    : (t.isEdited? `<div class="hint" style="margin-top:2px;">✎ ${L('edited_tag')}: ${t.lastEditedBy}${t.lastApprovedBy && t.lastApprovedBy!==t.lastEditedBy? (' · '+L('approved_by_short')+': '+t.lastApprovedBy):''}</div>` : "");
+  const actionButtons = (hasPending && isAdmin())
+    ? `<button class="btn btn-ghost btn-sm" data-approve-edit="${t.id}" style="color:var(--ok)" title="${L('approve_btn')}">✓</button>
+       <button class="btn btn-ghost btn-sm" data-reject-edit="${t.id}" style="color:var(--red-600)" title="${L('reject_btn')}">✕</button>`
+    : `<button class="btn btn-ghost btn-sm" data-edit-txn="${t.id}">✎</button>
+       <button class="btn btn-ghost btn-sm" data-del-txn="${t.id}" style="color:var(--red-600)">🗑</button>`;
   return `<tr>
     <td>${fmtDate(t.date)}</td>
     <td>${typeTag}</td>
     ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
     <td>${accTag}${t.type==='transfer'?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
     <td>${t.category||"-"}</td>
-    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${t.voucherNo?`<div class="hint" style="margin-top:2px;">${L('voucher_no_short')}: ${t.voucherNo}</div>`:""}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}</td>
+    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${t.voucherNo?`<div class="hint" style="margin-top:2px;">${L('voucher_no_short')}: ${t.voucherNo}</div>`:""}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
     <td class="amt ${amtClass}">${sign}${fmt(t.amount)}</td>
     <td style="text-align:right; white-space:nowrap;">
-      <button class="btn btn-ghost btn-sm" data-edit-txn="${t.id}">✎</button>
-      <button class="btn btn-ghost btn-sm" data-del-txn="${t.id}" style="color:var(--red-600)">🗑</button>
+      ${actionButtons}
     </td>
   </tr>`;
 }
@@ -1428,10 +1463,12 @@ function pageProjectDetail(id){
         <div class="hint" style="margin-top:4px;">${L('client_label')}: ${p.client||"—"} &nbsp;·&nbsp; ${L('start_label')}: ${fmtDate(p.startDate)} ${p.budget?`&nbsp;·&nbsp; ${L('budget_label')}: ${fmt(p.budget)}`:""}</div>
         ${p.notes? `<div class="hint" style="margin-top:6px;">${p.notes}</div>`:""}
         ${p.createdBy? `<div class="hint" style="margin-top:6px;">${L('col_created_by')}: ${p.createdBy}${p.createdAt?(' · '+fmtDate(p.createdAt.slice(0,10))):''}</div>`:""}
+        ${editStatusHtml(p, 'project', p.id)}
       </div>
       <div style="display:flex; gap:8px;">
+        ${(p.pendingEdit && isAdmin())? "" : `
         <button class="btn btn-sm" data-edit-project="${p.id}">✎ ${L('edit')}</button>
-        <button class="btn btn-danger btn-sm" data-del-project="${p.id}">🗑 ${L('delete')}</button>
+        <button class="btn btn-danger btn-sm" data-del-project="${p.id}">🗑 ${L('delete')}</button>`}
       </div>
     </div>
     <div style="margin-top:14px;">
@@ -1488,6 +1525,7 @@ function accountCard(kind, a){
       <div class="hint">${L('current_balance')}</div>
       <div class="num" style="font-size:21px; font-weight:700; color:${bal>=0?'var(--teal-700)':'var(--bad)'}">${fmt(bal)}</div>
     </div>
+    ${editStatusHtml(a, kind==='bank'?'bank':'cash', a.id)}
   </div>`;
 }
 function pageAccountDetail(kind, id){
@@ -1509,14 +1547,16 @@ function pageAccountDetail(kind, id){
           &nbsp;·&nbsp; ${L('opening_balance')}: ${fmt(a.opening)}
         </div>
         ${a.createdBy? `<div class="hint" style="margin-top:4px;">${L('col_created_by')}: ${a.createdBy}${a.createdAt?(' · '+fmtDate(a.createdAt.slice(0,10))):''}</div>`:""}
+        ${editStatusHtml(a, kind==='bank'?'bank':'cash', a.id)}
       </div>
       <div style="display:flex; gap:8px; align-items:center;">
         <div style="text-align:right; margin-right:10px;">
           <div class="hint">${L('current_balance')}</div>
           <div class="num" style="font-size:20px; font-weight:700; color:${bal>=0?'var(--teal-700)':'var(--bad)'}">${fmt(bal)}</div>
         </div>
+        ${(a.pendingEdit && isAdmin())? "" : `
         <button class="btn btn-sm" data-edit-account="${kind}:${a.id}">✎</button>
-        <button class="btn btn-danger btn-sm" data-del-account="${kind}:${a.id}">🗑</button>
+        <button class="btn btn-danger btn-sm" data-del-account="${kind}:${a.id}">🗑</button>`}
       </div>
     </div>
   </div>
@@ -1761,6 +1801,8 @@ function formProject(existing){
   openModal(`
     <div class="modal-head"><h3>${existing? L('edit_project'):L('new_project')}</h3><button class="close-x" id="mClose">×</button></div>
     <div class="modal-body">
+      ${existing && !isAdmin()? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('non_admin_edit_note')}</p>`:""}
+      ${existing && existing.pendingEdit? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('overwrite_pending_note')}</p>`:""}
       <div class="field"><label>${L('project_name_req')}</label><input id="pfName" value="${p.name}" placeholder="${L('project_name_ph')}"></div>
       <div class="field"><label>${L('client_authority')}</label><input id="pfClient" value="${p.client}"></div>
       <div class="field-row">
@@ -1808,6 +1850,7 @@ function formProject(existing){
       };
       const saveBtn = overlay.querySelector("#pfSave"); saveBtn.disabled = true;
       let error;
+      const isEditOfExisting = !!existing;
       if(existing){
         stampUpdated(data);
         ({error} = await SB.from("projects").update(projectToRow({...existing, ...data})).eq("id", existing.id));
@@ -1817,7 +1860,8 @@ function formProject(existing){
       }
       saveBtn.disabled = false;
       if(error){ toast(L('toast_sync_error')); console.error(error); return; }
-      closeModal(); await refreshAndRender(); toast(L('toast_project_saved'));
+      closeModal(); await refreshAndRender();
+      toast((isEditOfExisting && !isAdmin())? L('toast_edit_submitted') : L('toast_project_saved'));
     };
   });
 }
@@ -1828,6 +1872,8 @@ function formAccount(kind, existing){
   openModal(`
     <div class="modal-head"><h3>${existing? L('edit_account'): (isBank?L('new_bank_account'):L('new_cash_account'))}</h3><button class="close-x" id="mClose">×</button></div>
     <div class="modal-body">
+      ${existing && !isAdmin()? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('non_admin_edit_note')}</p>`:""}
+      ${existing && existing.pendingEdit? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('overwrite_pending_note')}</p>`:""}
       <div class="field"><label>${L('account_name_req')}</label><input id="afName" value="${a.name}" placeholder="${isBank?L('account_name_ph_bank'):L('account_name_ph_cash')}"></div>
       ${isBank? `
       <div class="field"><label>${L('bank_name_label')}</label><input id="afBankName" value="${a.bankName||''}"></div>
@@ -1857,6 +1903,7 @@ function formAccount(kind, existing){
       const toRow = isBank? bankToRow : cashToRow;
       const saveBtn = overlay.querySelector("#afSave"); saveBtn.disabled = true;
       let error;
+      const isEditOfExisting = !!existing;
       if(existing){
         stampUpdated(data);
         ({error} = await SB.from(table).update(toRow({...existing, ...data})).eq("id", existing.id));
@@ -1866,7 +1913,8 @@ function formAccount(kind, existing){
       }
       saveBtn.disabled = false;
       if(error){ toast(L('toast_sync_error')); console.error(error); return; }
-      closeModal(); await refreshAndRender(); toast(L('toast_account_saved'));
+      closeModal(); await refreshAndRender();
+      toast((isEditOfExisting && !isAdmin())? L('toast_edit_submitted') : L('toast_account_saved'));
     };
   });
 }
@@ -1886,6 +1934,8 @@ function formTransaction(existing, presets={}){
   openModal(`
     <div class="modal-head"><h3>${existing? L('edit_transaction'):L('new_transaction')}</h3><button class="close-x" id="mClose">×</button></div>
     <div class="modal-body">
+      ${existing && !isAdmin()? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('non_admin_edit_note')}</p>`:""}
+      ${existing && existing.pendingEdit? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('overwrite_pending_note')}</p>`:""}
       <div class="field">
         <label>${L('type_label')}</label>
         <div class="radio-row">
@@ -2076,6 +2126,7 @@ function formTransaction(existing, presets={}){
       if(!data.accountId){ toast(L('toast_select_account')); return; }
       const saveBtn = overlay.querySelector("#tfSave"); saveBtn.disabled = true;
       let error;
+      const isEditOfExisting = !!existing;
       if(existing){
         stampUpdated(data);
         ({error} = await SB.from("transactions").update(txnToRow({...existing, ...data})).eq("id", existing.id));
@@ -2085,7 +2136,8 @@ function formTransaction(existing, presets={}){
       }
       saveBtn.disabled = false;
       if(error){ toast(L('toast_sync_error')); console.error(error); return; }
-      closeModal(); await refreshAndRender(); toast(L('toast_txn_saved'));
+      closeModal(); await refreshAndRender();
+      toast((isEditOfExisting && !isAdmin())? L('toast_edit_submitted') : L('toast_txn_saved'));
     };
   });
 }
@@ -2173,6 +2225,40 @@ function bindGlobalEvents(){
         if(error){ toast(L('toast_sync_error')); console.error(error); return; }
         await refreshAndRender(); toast(L('toast_txn_deleted'));
       }
+    });
+  });
+  document.querySelectorAll("[data-approve-edit]").forEach(el=>{
+    el.addEventListener("click",async (e)=>{ e.stopPropagation();
+      const { error } = await SB.rpc("approve_transaction_edit", { txn_id: el.dataset.approveEdit });
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_edit_approved'));
+    });
+  });
+  document.querySelectorAll("[data-reject-edit]").forEach(el=>{
+    el.addEventListener("click",async (e)=>{ e.stopPropagation();
+      if(!confirm(L('confirm_reject_edit'))) return;
+      const { error } = await SB.rpc("reject_transaction_edit", { txn_id: el.dataset.rejectEdit });
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_edit_rejected'));
+    });
+  });
+  const editApproveFnByKind = { project:"approve_project_edit", bank:"approve_bank_account_edit", cash:"approve_cash_account_edit" };
+  const editRejectFnByKind = { project:"reject_project_edit", bank:"reject_bank_account_edit", cash:"reject_cash_account_edit" };
+  document.querySelectorAll("[data-approve-edit-kind]").forEach(el=>{
+    el.addEventListener("click", async (e)=>{ e.stopPropagation();
+      const kind = el.dataset.approveEditKind, id = el.dataset.approveEditId;
+      const { error } = await SB.rpc(editApproveFnByKind[kind], { row_id: id });
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_edit_approved'));
+    });
+  });
+  document.querySelectorAll("[data-reject-edit-kind]").forEach(el=>{
+    el.addEventListener("click", async (e)=>{ e.stopPropagation();
+      if(!confirm(L('confirm_reject_edit'))) return;
+      const kind = el.dataset.rejectEditKind, id = el.dataset.rejectEditId;
+      const { error } = await SB.rpc(editRejectFnByKind[kind], { row_id: id });
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_edit_rejected'));
     });
   });
 
