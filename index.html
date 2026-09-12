@@ -370,6 +370,12 @@ const DICT = {
   income:{bn:"আয়", en:"Income"},
   expense:{bn:"খরচ", en:"Expense"},
   transfer:{bn:"স্থানান্তর", en:"Transfer"},
+  withdrawal:{bn:"উত্তোলন", en:"Withdrawal"},
+  tag_withdrawal:{bn:"উত্তোলন", en:"Withdrawal"},
+  cash_receipt_no_label:{bn:"নগদ প্রাপ্তি রশিদ নম্বর", en:"Cash Receipt Number"},
+  cash_receipt_no_ph:{bn:"যেমন: CR-00124", en:"e.g. CR-00124"},
+  cash_receipt_no_short:{bn:"রশিদ", en:"Receipt"},
+  withdrawal_note:{bn:"ব্যাংক থেকে উত্তোলন — কোনো গন্তব্য হিসাব লাগবে না, শুধু চেক নম্বর ও কে উত্তোলন করেছে তার নাম", en:"A withdrawal from the bank — no destination account needed, just the cheque number and who withdrew it"},
   net:{bn:"নীট", en:"Net"},
   status_running:{bn:"চলমান", en:"Running"},
   status_done:{bn:"সম্পন্ন", en:"Done"},
@@ -423,7 +429,7 @@ const DICT = {
 
   all_types:{bn:"সকল ধরণ", en:"All Types"},
   all_projects:{bn:"সকল প্রজেক্ট", en:"All Projects"},
-  general_company:{bn:"সাধারণ (কোম্পানি)", en:"General (Company)"},
+  general_company:{bn:"অফিস খরচ", en:"Office Expense"},
   all_accounts:{bn:"সকল হিসাব", en:"All Accounts"},
   search_placeholder:{bn:"খুঁজুন...", en:"Search..."},
   reset:{bn:"রিসেট", en:"Reset"},
@@ -666,7 +672,7 @@ function statusLabel(status){
   return status==='done'? L('status_done') : status==='hold'? L('status_hold') : L('status_running');
 }
 function typeLabel(type){
-  return type==='income'? L('income') : type==='expense'? L('expense') : L('transfer');
+  return type==='income'? L('income') : type==='expense'? L('expense') : type==='withdrawal'? L('withdrawal') : L('transfer');
 }
 function projectCodeLabel(p){
   if(!p || p.projectCode==null) return "";
@@ -916,7 +922,7 @@ function companyTotals(){
   let income=0, expense=0;
   DB.transactions.forEach(t=>{
     if(t.type==="income") income += Number(t.amount);
-    if(t.type==="expense") expense += Number(t.amount);
+    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
   });
   return {income, expense, net: income-expense};
 }
@@ -924,7 +930,7 @@ function projectTotals(projectId){
   let income=0, expense=0;
   DB.transactions.filter(t=>t.projectId===projectId).forEach(t=>{
     if(t.type==="income") income += Number(t.amount);
-    if(t.type==="expense") expense += Number(t.amount);
+    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
   });
   return {income, expense, net: income-expense};
 }
@@ -1010,7 +1016,7 @@ function exportAllReportsExcel(){
   [...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
     let accStr = accountName(t.accountType, t.accountId);
     if(t.type==='transfer'){ accStr += " -> " + accountName(t.toAccountType, t.toAccountId); }
-    const signedAmount = t.type==='expense'? -Number(t.amount) : Number(t.amount);
+    const signedAmount = (t.type==='expense'||t.type==='withdrawal')? -Number(t.amount) : Number(t.amount);
     const methodStr = t.method==='cheque'? L('cheque_method') : (t.method==='bank_transfer'? L('bank_transfer_method') : (t.method==='cash'? L('cash_method') : ''));
     txnRows.push([t.date, typeLabel(t.type), projectName(t.projectId), accStr, t.category||'', t.desc||'', t.voucherNo||'', methodStr, t.chequeNo||'', t.chequeBankName||'', t.withdrawnBy||'', signedAmount, t.createdBy||'']);
   });
@@ -1394,10 +1400,11 @@ function transactionsTable(list, opts={}){
 function rowTxn(t, opts={}){
   const typeTag = t.type==="income"? `<span class="tag tag-income">${L('income')}</span>`
     : t.type==="expense"? `<span class="tag tag-expense">${L('expense')}</span>`
+    : t.type==="withdrawal"? `<span class="tag tag-expense">${L('withdrawal')}</span>`
     : `<span class="tag tag-transfer">${L('transfer')}</span>`;
   const accTag = `<span class="tag ${t.accountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.accountType,t.accountId)}</span>`;
-  const amtClass = t.type==="income"?"pos": t.type==="expense"?"neg":"";
-  const sign = t.type==="income"?"+": t.type==="expense"?"-":"";
+  const amtClass = t.type==="income"?"pos": (t.type==="expense"||t.type==="withdrawal")?"neg":"";
+  const sign = t.type==="income"?"+": (t.type==="expense"||t.type==="withdrawal")?"-":"";
   const hasPending = !!t.pendingEdit;
   const editStatusTag = hasPending
     ? `<div class="hint" style="margin-top:2px; color:var(--orange-600); font-weight:600;">⏳ ${L('pending_edit_tag')} (${t.pendingEditBy})</div>`
@@ -1407,13 +1414,14 @@ function rowTxn(t, opts={}){
        <button class="btn btn-ghost btn-sm" data-reject-edit="${t.id}" style="color:var(--red-600)" title="${L('reject_btn')}">✕</button>`
     : `<button class="btn btn-ghost btn-sm" data-edit-txn="${t.id}">✎</button>
        <button class="btn btn-ghost btn-sm" data-del-txn="${t.id}" style="color:var(--red-600)">🗑</button>`;
+  const voucherHint = t.voucherNo? `<div class="hint" style="margin-top:2px;">${(t.type==='income'?L('cash_receipt_no_short'):L('voucher_no_short'))}: ${t.voucherNo}</div>` : "";
   return `<tr>
     <td>${fmtDate(t.date)}</td>
     <td>${typeTag}</td>
     ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
     <td>${accTag}${t.type==='transfer'?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
     <td>${t.category||"-"}</td>
-    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${t.voucherNo?`<div class="hint" style="margin-top:2px;">${L('voucher_no_short')}: ${t.voucherNo}</div>`:""}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
+    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${voucherHint}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
     <td class="amt ${amtClass}">${sign}${fmt(t.amount)}</td>
     <td style="text-align:right; white-space:nowrap;">
       ${actionButtons}
@@ -1589,10 +1597,10 @@ function applyFilters(list){
 function pageTransactions(){
   const list = applyFilters([...DB.transactions]).sort((a,b)=>b.date.localeCompare(a.date));
   const sumIn = list.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
-  const sumOut = list.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount),0);
+  const sumOut = list.filter(t=>t.type==='expense'||t.type==='withdrawal').reduce((s,t)=>s+Number(t.amount),0);
   return `
   <div class="filter-bar">
-    <select id="fType"><option value="">${L('all_types')}</option><option value="income" ${FILTERS.type==='income'?'selected':''}>${L('income')}</option><option value="expense" ${FILTERS.type==='expense'?'selected':''}>${L('expense')}</option><option value="transfer" ${FILTERS.type==='transfer'?'selected':''}>${L('transfer')}</option></select>
+    <select id="fType"><option value="">${L('all_types')}</option><option value="income" ${FILTERS.type==='income'?'selected':''}>${L('income')}</option><option value="expense" ${FILTERS.type==='expense'?'selected':''}>${L('expense')}</option><option value="withdrawal" ${FILTERS.type==='withdrawal'?'selected':''}>${L('withdrawal')}</option><option value="transfer" ${FILTERS.type==='transfer'?'selected':''}>${L('transfer')}</option></select>
     <select id="fProject">
       <option value="">${L('all_projects')}</option>
       <option value="__company__" ${FILTERS.projectId==='__company__'?'selected':''}>${L('general_company')}</option>
@@ -1659,7 +1667,7 @@ function pageReports(){
 }
 function categoryBreakdown(){
   const map = {};
-  DB.transactions.filter(t=>t.type==='expense').forEach(t=>{
+  DB.transactions.filter(t=>t.type==='expense' || t.type==='withdrawal').forEach(t=>{
     const cat = t.category||L('other_category');
     map[cat] = (map[cat]||0) + Number(t.amount);
   });
@@ -1920,41 +1928,32 @@ function formAccount(kind, existing){
 }
 
 function formTransaction(existing, presets={}){
+  const defaultAccType = presets.accountType || (DB.banks[0]?"bank":"cash");
+  const defaultType = defaultAccType==='bank' ? 'withdrawal' : 'expense';
   const t = existing || {
-    date: todayStr(), type:"expense", scope: presets.projectId? "project":"company",
-    projectId: presets.projectId || "", accountType: presets.accountType || (DB.banks[0]?"bank":"cash"),
+    date: todayStr(), type: defaultType, scope: presets.projectId? "project":"company",
+    projectId: presets.projectId || "", accountType: defaultAccType,
     accountId: presets.accountId || (DB.banks[0]?.id || DB.cash[0]?.id || ""),
     toAccountType:"", toAccountId:"", category:"", desc:"", amount:"", voucherNo:"",
     method:"cash", chequeNo:"", chequeBankName:"", withdrawnBy:""
   };
+  const typesForAccount = (accType)=> accType==='bank'? ['income','withdrawal'] : ['income','expense'];
+  const typeChipLabel = (v)=> v==='income'?L('income'): v==='expense'?L('expense'): v==='withdrawal'?L('withdrawal'): L('transfer');
   const renderCatOptions = (type)=> (DB.categories[type]||[]).map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join("");
   const bankOpts = (selType,selId)=> DB.banks.map(b=>`<option value="${b.id}" ${selType==='bank'&&selId===b.id?'selected':''}>${b.name}</option>`).join("");
   const cashOpts = (selType,selId)=> DB.cash.map(c=>`<option value="${c.id}" ${selType==='cash'&&selId===c.id?'selected':''}>${c.name}</option>`).join("");
+
+  // if editing an older row saved before this restructure (e.g. type='expense'
+  // on a bank account, or type='transfer' from a bank), show it as a withdrawal
+  let initialType = t.type;
+  if(existing && t.accountType==='bank' && (t.type==='expense' || t.type==='transfer')) initialType = 'withdrawal';
+  if(existing && t.accountType==='cash' && t.type==='transfer') initialType = 'expense';
 
   openModal(`
     <div class="modal-head"><h3>${existing? L('edit_transaction'):L('new_transaction')}</h3><button class="close-x" id="mClose">×</button></div>
     <div class="modal-body">
       ${existing && !isAdmin()? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('non_admin_edit_note')}</p>`:""}
       ${existing && existing.pendingEdit? `<p class="hint" style="background:#fff3e0; padding:8px 10px; border-radius:8px; margin-top:0;">${L('overwrite_pending_note')}</p>`:""}
-      <div class="field">
-        <label>${L('type_label')}</label>
-        <div class="radio-row">
-          <label class="radio-chip ${t.type==='income'?'checked':''}"><input type="radio" name="txType" value="income" ${t.type==='income'?'checked':''}>${L('income')}</label>
-          <label class="radio-chip ${t.type==='expense'?'checked':''}"><input type="radio" name="txType" value="expense" ${t.type==='expense'?'checked':''}>${L('expense')}</label>
-          <label class="radio-chip ${t.type==='transfer'?'checked':''}"><input type="radio" name="txType" value="transfer" ${t.type==='transfer'?'checked':''}>${L('transfer')}</label>
-        </div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>${L('date_label')}</label><input type="date" id="tfDate" value="${t.date}"></div>
-        <div class="field"><label>${L('amount_bdt_req')}</label><input type="number" id="tfAmount" value="${t.amount}" placeholder="0"></div>
-      </div>
-      <div class="field" id="tfProjectWrap">
-        <label>${L('project_optional')}</label>
-        <select id="tfProject">
-          <option value="">${L('general_company')}</option>
-          ${DB.projects.map(p=>`<option value="${p.id}" ${t.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
-        </select>
-      </div>
       <div class="field-row">
         <div class="field"><label id="tfAccLabel">${L('account_from_to')}</label>
           <select id="tfAccType">
@@ -1966,7 +1965,19 @@ function formTransaction(existing, presets={}){
           <select id="tfAccount"></select>
         </div>
       </div>
-      <div class="field-row" id="tfToWrap" style="display:${t.type==='transfer'?'grid':'none'};">
+      <div class="field" id="tfTypeWrap"></div>
+      <div class="field-row">
+        <div class="field"><label>${L('date_label')}</label><input type="date" id="tfDate" value="${t.date}"></div>
+        <div class="field"><label>${L('amount_bdt_req')}</label><input type="number" id="tfAmount" value="${t.amount}" placeholder="0"></div>
+      </div>
+      <div class="field" id="tfProjectWrap">
+        <label>${L('project_optional')}</label>
+        <select id="tfProject">
+          <option value="">${L('general_company')}</option>
+          ${DB.projects.map(p=>`<option value="${p.id}" ${t.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
+        </select>
+      </div>
+      <div class="field-row" id="tfToWrap" style="display:none;">
         <div class="field"><label>${L('recipient_acc_type')}</label>
           <select id="tfToType">
             <option value="bank" ${t.toAccountType==='bank'?'selected':''}>${L('bank_label')}</option>
@@ -1982,7 +1993,9 @@ function formTransaction(existing, presets={}){
         <select id="tfCategory"></select>
       </div>
       <div class="field"><label>${L('description_label')}</label><input id="tfDesc" value="${t.desc||''}" placeholder="${L('description_ph')}"></div>
-      <div class="field"><label>${L('voucher_no_label')}</label><input id="tfVoucherNo" value="${t.voucherNo||''}" placeholder="${L('voucher_no_ph')}"></div>
+      <div class="field" id="tfVoucherWrap" style="display:none;">
+        <label id="tfVoucherLabel">${L('cash_receipt_no_label')}</label><input id="tfVoucherNo" value="${t.voucherNo||''}" placeholder="${L('cash_receipt_no_ph')}">
+      </div>
       <div class="field" id="tfMethodWrap" style="display:none;">
         <label>${L('payment_method')}</label>
         <div class="radio-row">
@@ -1999,6 +2012,7 @@ function formTransaction(existing, presets={}){
         <div class="field"><label>${L('withdrawal_cheque_no_label')}</label><input id="tfChequeNo" value="${t.chequeNo||''}" placeholder="${L('cheque_no_ph')}"></div>
         <div class="field"><label>${L('withdrawn_by_label')}</label><input id="tfWithdrawnBy" value="${t.withdrawnBy||''}" placeholder="${L('withdrawn_by_ph')}"></div>
       </div>
+      <p class="hint" id="tfWithdrawalNote" style="display:none;">${L('withdrawal_note')}</p>
     </div>
     <div class="modal-foot">
       <button class="btn" id="mCancel">${L('cancel')}</button>
@@ -2016,34 +2030,68 @@ function formTransaction(existing, presets={}){
     const chequeWrap = overlay.querySelector("#tfChequeWrap");
     const methodWrap = overlay.querySelector("#tfMethodWrap");
     const inChequeWrap = overlay.querySelector("#tfInChequeWrap");
+    const voucherWrap = overlay.querySelector("#tfVoucherWrap");
+    const withdrawalNote = overlay.querySelector("#tfWithdrawalNote");
+    const typeWrap = overlay.querySelector("#tfTypeWrap");
+
+    let currentType = initialType;
+
+    function renderTypeRadio(){
+      const allowed = typesForAccount(accTypeSel.value);
+      if(!allowed.includes(currentType)) currentType = allowed[0];
+      typeWrap.innerHTML = `
+        <label>${L('type_label')}</label>
+        <div class="radio-row">
+          ${allowed.map(v=>`<label class="radio-chip ${currentType===v?'checked':''}"><input type="radio" name="txType" value="${v}" ${currentType===v?'checked':''}>${typeChipLabel(v)}</label>`).join("")}
+        </div>`;
+      typeWrap.querySelectorAll('input[name="txType"]').forEach(r=>{
+        r.onchange = ()=>{
+          currentType = r.value;
+          typeWrap.querySelectorAll('.radio-chip').forEach(c=>c.classList.remove('checked'));
+          r.closest('.radio-chip').classList.add('checked');
+          refreshCatOptions();
+        };
+      });
+    }
 
     function refreshAccOptions(){
       accSel.innerHTML = accTypeSel.value==='bank'? bankOpts(t.accountType,t.accountId) : cashOpts(t.accountType,t.accountId);
       if(!accSel.value && accSel.options.length) accSel.selectedIndex = 0;
-      refreshChequeVisibility();
+      renderTypeRadio();
+      refreshCatOptions();
     }
     function refreshToOptions(){
       toAccSel.innerHTML = toTypeSel.value==='bank'? bankOpts(t.toAccountType,t.toAccountId) : cashOpts(t.toAccountType,t.toAccountId);
       if(!toAccSel.value && toAccSel.options.length) toAccSel.selectedIndex = 0;
     }
     function refreshChequeVisibility(){
-      const type = overlay.querySelector('input[name="txType"]:checked').value;
-      const isBankWithdrawal = type==='expense' && accTypeSel.value==='bank';
-      chequeWrap.style.display = isBankWithdrawal? 'grid':'none';
+      const isWithdrawal = currentType==='withdrawal';
+      chequeWrap.style.display = isWithdrawal? 'grid':'none';
+      withdrawalNote.style.display = isWithdrawal? 'block':'none';
 
-      const isIncome = type==='income';
+      const isIncome = currentType==='income';
+      const isExpense = currentType==='expense';
       methodWrap.style.display = isIncome? 'block':'none';
+      voucherWrap.style.display = (isIncome || isExpense)? 'block':'none';
+      const voucherLabel = overlay.querySelector("#tfVoucherLabel");
+      const voucherInput = overlay.querySelector("#tfVoucherNo");
+      if(voucherLabel && voucherInput){
+        voucherLabel.textContent = isIncome? L('cash_receipt_no_label') : L('voucher_no_label');
+        voucherInput.placeholder = isIncome? L('cash_receipt_no_ph') : L('voucher_no_ph');
+      }
 
       const bankChip = overlay.querySelector("#tfMethodBankChip");
       const isBankAccount = accTypeSel.value==='bank';
-      bankChip.style.display = isBankAccount? 'inline-flex':'none';
-      if(!isBankAccount){
-        const bankRadio = overlay.querySelector('input[name="txMethod"][value="bank_transfer"]');
-        if(bankRadio && bankRadio.checked){
-          const cashRadio = overlay.querySelector('input[name="txMethod"][value="cash"]');
-          cashRadio.checked = true;
-          overlay.querySelectorAll('#tfMethodWrap .radio-chip').forEach(c=>c.classList.remove('checked'));
-          cashRadio.closest('.radio-chip').classList.add('checked');
+      if(bankChip){
+        bankChip.style.display = isBankAccount? 'inline-flex':'none';
+        if(!isBankAccount){
+          const bankRadio = overlay.querySelector('input[name="txMethod"][value="bank_transfer"]');
+          if(bankRadio && bankRadio.checked){
+            const cashRadio = overlay.querySelector('input[name="txMethod"][value="cash"]');
+            cashRadio.checked = true;
+            overlay.querySelectorAll('#tfMethodWrap .radio-chip').forEach(c=>c.classList.remove('checked'));
+            cashRadio.closest('.radio-chip').classList.add('checked');
+          }
         }
       }
 
@@ -2052,14 +2100,18 @@ function formTransaction(existing, presets={}){
       inChequeWrap.style.display = isCheque? 'grid':'none';
     }
     function refreshCatOptions(){
-      const type = overlay.querySelector('input[name="txType"]:checked').value;
-      if(type==='transfer'){ catWrap.style.display='none'; toWrap.style.display='grid'; projWrap.style.display='none'; }
-      else { catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
-        catSel.innerHTML = renderCatOptions(type);
+      if(currentType==='transfer'){
+        catWrap.style.display='none'; toWrap.style.display='grid'; projWrap.style.display='none';
+      } else if(currentType==='withdrawal'){
+        catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
+        catSel.innerHTML = renderCatOptions('expense');
+      } else {
+        catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
+        catSel.innerHTML = renderCatOptions(currentType);
       }
       refreshChequeVisibility();
     }
-    refreshAccOptions(); refreshToOptions(); refreshCatOptions();
+    renderTypeRadio(); refreshAccOptions(); refreshToOptions(); refreshCatOptions();
 
     overlay.querySelectorAll('input[name="txMethod"]').forEach(r=>{
       r.onchange = ()=>{
@@ -2071,26 +2123,19 @@ function formTransaction(existing, presets={}){
 
     accTypeSel.onchange = refreshAccOptions;
     toTypeSel.onchange = refreshToOptions;
-    overlay.querySelectorAll('input[name="txType"]').forEach(r=>{
-      r.onchange = ()=>{
-        overlay.querySelectorAll('.radio-chip').forEach(c=>c.classList.remove('checked'));
-        r.closest('.radio-chip').classList.add('checked');
-        refreshCatOptions();
-      };
-    });
 
     overlay.querySelector("#mClose").onclick = closeModal;
     overlay.querySelector("#mCancel").onclick = closeModal;
     overlay.querySelector("#tfSave").onclick = async ()=>{
       const amount = Number(overlay.querySelector("#tfAmount").value);
       if(!amount || amount<=0){ toast(L('toast_valid_amount')); return; }
-      const type = overlay.querySelector('input[name="txType"]:checked').value;
+      const type = currentType;
       const data = {
         date: overlay.querySelector("#tfDate").value || todayStr(),
         type,
         amount,
         desc: overlay.querySelector("#tfDesc").value.trim(),
-        voucherNo: overlay.querySelector("#tfVoucherNo").value.trim(),
+        voucherNo: (type==='income'||type==='expense')? overlay.querySelector("#tfVoucherNo").value.trim() : "",
         accountType: accTypeSel.value,
         accountId: accSel.value,
       };
@@ -2104,9 +2149,9 @@ function formTransaction(existing, presets={}){
       } else {
         const pid = overlay.querySelector("#tfProject").value;
         data.projectId = pid || null;
-        data.category = catSel.value || (DB.categories[type][0]||"");
+        data.category = catSel.value || (DB.categories[type==='withdrawal'?'expense':type][0]||"");
       }
-      if(type==='expense' && data.accountType==='bank'){
+      if(type==='withdrawal'){
         data.chequeNo = overlay.querySelector("#tfChequeNo").value.trim();
         data.withdrawnBy = overlay.querySelector("#tfWithdrawnBy").value.trim();
         data.method = ""; data.chequeBankName = "";
