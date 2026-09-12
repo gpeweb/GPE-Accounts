@@ -430,6 +430,7 @@ const DICT = {
   all_types:{bn:"সকল ধরণ", en:"All Types"},
   all_projects:{bn:"সকল প্রজেক্ট", en:"All Projects"},
   general_company:{bn:"অফিস খরচ", en:"Office Expense"},
+  office_expense_card_hint:{bn:"প্রজেক্ট ছাড়া সব খরচ এখানে জমা হয় — ক্লিক করে বিস্তারিত দেখুন", en:"All non-project expenses land here — click to see details"},
   all_accounts:{bn:"সকল হিসাব", en:"All Accounts"},
   search_placeholder:{bn:"খুঁজুন...", en:"Search..."},
   reset:{bn:"রিসেট", en:"Reset"},
@@ -934,6 +935,14 @@ function projectTotals(projectId){
   });
   return {income, expense, net: income-expense};
 }
+function officeExpenseTotals(){
+  let income=0, expense=0;
+  DB.transactions.filter(t=>!t.projectId).forEach(t=>{
+    if(t.type==="income") income += Number(t.amount);
+    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
+  });
+  return {income, expense, net: income-expense};
+}
 function projectName(id){ const p = DB.projects.find(p=>p.id===id); return p? p.name : L('general_company'); }
 function accountName(type,id){
   const list = type==="bank"? DB.banks : DB.cash;
@@ -1431,6 +1440,20 @@ function rowTxn(t, opts={}){
 
 /* ---------------- Projects ---------------- */
 let PROJECT_SEARCH = "";
+function officeExpenseCard(){
+  const t = officeExpenseTotals();
+  return `
+  <div class="proj-card" data-office-expense="1" style="cursor:pointer; border-color:var(--amber-500); background:#fffaf3;">
+    <div class="top">
+      <div><div class="pname">🏢 ${L('general_company')}</div><div class="pclient">${L('office_expense_card_hint')}</div></div>
+    </div>
+    <div class="proj-nums">
+      <div><div class="l">${L('income')}</div><div class="v" style="color:var(--ok)">${fmt(t.income)}</div></div>
+      <div><div class="l">${L('expense')}</div><div class="v" style="color:var(--bad)">${fmt(t.expense)}</div></div>
+      <div><div class="l">${L('net')}</div><div class="v">${fmt(t.net)}</div></div>
+    </div>
+  </div>`;
+}
 function pageProjects(){
   const q = PROJECT_SEARCH.trim().toLowerCase();
   const filtered = !q? DB.projects : DB.projects.filter(p=>{
@@ -1448,7 +1471,8 @@ function pageProjects(){
     <button class="btn btn-primary btn-sm" id="btnAddProject">+ ${L('new_project')}</button>
   </div>
   <div class="grid grid-3">
-    ${filtered.map(p=>projectCard(p)).join("") || emptyState("🔍", q? L('no_project_match') : L('no_projects_yet'))}
+    ${q? "" : officeExpenseCard()}
+    ${filtered.map(p=>projectCard(p)).join("") || (q? emptyState("🔍", L('no_project_match')):"")}
   </div>`;
 }
 
@@ -2219,6 +2243,12 @@ function bindGlobalEvents(){
       if(el2){ el2.focus(); el2.setSelectionRange(cursorPos, cursorPos); }
     });
   }
+
+  const officeExpenseCardEl = document.querySelector("[data-office-expense]");
+  if(officeExpenseCardEl) officeExpenseCardEl.addEventListener("click", ()=>{
+    FILTERS = {type:"",scope:"",projectId:"__company__",accountType:"",accountId:"",from:"",to:"",q:""};
+    navigate("transactions");
+  });
 
   const addBank = document.getElementById("btnAddBank");
   if(addBank) addBank.onclick = ()=> formAccount("bank", null);
