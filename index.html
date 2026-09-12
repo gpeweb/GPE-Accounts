@@ -327,6 +327,13 @@ const DICT = {
   nav_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
   nav_transactions:{bn:"সকল লেনদেন", en:"All Transactions"},
   nav_reports:{bn:"রিপোর্ট", en:"Reports"},
+  nav_profit:{bn:"লাভ", en:"Profit"},
+  total_profit_projects:{bn:"প্রজেক্ট থেকে মোট লাভ", en:"Total Profit from Projects"},
+  company_profit:{bn:"কোম্পানির লাভ", en:"Company Profit"},
+  shareholders_profit:{bn:"শেয়ারহোল্ডারদের লাভ", en:"Shareholders Profit"},
+  done_projects_profit_breakdown:{bn:"সম্পন্ন প্রজেক্টের লাভের বিবরণ", en:"Completed Projects' Profit Breakdown"},
+  no_done_projects:{bn:"এখনো কোনো প্রজেক্ট সম্পন্ন (Done) হয়নি", en:"No projects marked Done yet"},
+  profit_display_only_note:{bn:"⚠️ এই পেজটি শুধু তথ্য দেখানোর জন্য — এখানে কোনো কিছুই কোনো ব্যাংক বা ক্যাশ হিসাবের ব্যালেন্স পরিবর্তন করে না।", en:"⚠️ This page is for display only — nothing here changes any bank or cash account balance."},
   nav_settings:{bn:"সেটিংস", en:"Settings"},
   sidebar_foot:{bn:"লোকাল ডেটা এই ব্রাউজারে সংরক্ষিত", en:"Data is stored locally in this browser"},
 
@@ -1261,6 +1268,7 @@ function sidebar(){
       ${navItem("officeExpense","🏢",L('general_company'))}
       ${navItem("transactions","📒",L('nav_transactions'))}
       <div class="nav-group-label">${L('nav_group_other')}</div>
+      ${navItem("profit","💹",L('nav_profit'))}
       ${navItem("reports","📈",L('nav_reports'))}
       ${navItem("settings","⚙️",L('nav_settings'))}
       ${isAdmin()? navItem("users","👤",L('nav_users')) : ""}
@@ -1285,6 +1293,7 @@ function pageTitleFor(){
     cashDetail:[L('title_cashDetail'),""],
     officeExpense:[L('general_company'),L('office_expense_card_hint')],
     transactions:[L('title_transactions'),L('sub_transactions')],
+    profit:[L('nav_profit'),L('profit_display_only_note')],
     reports:[L('title_reports'),L('sub_reports')],
     settings:[L('title_settings'),L('sub_settings')],
     users:[L('nav_users'),L('user_management_hint')]
@@ -1322,6 +1331,7 @@ function pageBody(){
     case "cashDetail": return pageAccountDetail("cash", ROUTE.id);
     case "officeExpense": return pageOfficeExpense();
     case "transactions": return pageTransactions();
+    case "profit": return pageProfit();
     case "reports": return pageReports();
     case "settings": return pageSettings();
     case "users": return pageUsers();
@@ -1632,6 +1642,39 @@ function pageOfficeExpense(){
     <button class="btn btn-primary btn-sm" data-add-txn-office="1">+ ${L('add_txn')}</button>
   </div>
   ${transactionsTable(txns)}
+  `;
+}
+
+function doneProjectsProfitList(){
+  return DB.projects.filter(p=>p.status==='done').map(p=>({ project:p, profit: projectTotals(p.id).net }));
+}
+function pageProfit(){
+  const list = doneProjectsProfitList();
+  const totalProfit = list.reduce((s,x)=>s+x.profit, 0);
+  const companyProfit = totalProfit * 0.5;
+  const shareholdersProfit = totalProfit * 0.5;
+  return `
+  <div class="grid grid-3">
+    <div class="card stat-card stat-lime"><div class="label">${L('total_profit_projects')}</div><div class="value num" style="font-size:20px; color:${totalProfit>=0?'var(--ok)':'var(--bad)'}">${fmt(totalProfit)}</div></div>
+    <div class="card stat-card stat-teal"><div class="label">${L('company_profit')}</div><div class="value num" style="font-size:20px;">${fmt(companyProfit)}</div></div>
+    <div class="card stat-card stat-amber"><div class="label">${L('shareholders_profit')}</div><div class="value num" style="font-size:20px;">${fmt(shareholdersProfit)}</div></div>
+  </div>
+  <div class="section-title"><div><h2>${L('done_projects_profit_breakdown')}</h2></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>#</th><th>${L('col_project')}</th><th style="text-align:right;">${L('net')}</th><th style="text-align:right;">${L('company_profit')} (50%)</th><th style="text-align:right;">${L('shareholders_profit')} (50%)</th></tr></thead>
+      <tbody>
+        ${list.map((x,i)=>`<tr>
+          <td>${i+1}</td>
+          <td>${projectCodeLabel(x.project)? (projectCodeLabel(x.project)+' · '):''}${x.project.name}</td>
+          <td class="amt">${fmt(x.profit)}</td>
+          <td class="amt">${fmt(x.profit*0.5)}</td>
+          <td class="amt">${fmt(x.profit*0.5)}</td>
+        </tr>`).join("") || `<tr class="empty-row"><td colspan="5">${L('no_done_projects')}</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint" style="margin-top:14px;">${L('profit_display_only_note')}</p>
   `;
 }
 
