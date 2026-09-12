@@ -491,6 +491,7 @@ const DICT = {
   date_label:{bn:"তারিখ", en:"Date"},
   amount_bdt_req:{bn:"পরিমাণ (৳) *", en:"Amount (৳) *"},
   project_optional:{bn:"প্রজেক্ট (ঐচ্ছিক — না দিলে সাধারণ কোম্পানি খরচ ধরা হবে)", en:"Project (optional — if left blank, this counts as a general company expense)"},
+  receiver_label:{bn:"প্রাপক", en:"Receiver"},
   account_from_to:{bn:"হিসাব থেকে/এ", en:"Account (From/To)"},
   recipient_acc_type:{bn:"প্রাপক হিসাবের ধরণ", en:"Recipient Account Type"},
   recipient_account:{bn:"প্রাপক হিসাব", en:"Recipient Account"},
@@ -674,6 +675,13 @@ function statusLabel(status){
 }
 function typeLabel(type){
   return type==='income'? L('income') : type==='expense'? L('expense') : type==='withdrawal'? L('withdrawal') : L('transfer');
+}
+function isRealExpense(t){
+  // a withdrawal that has a receiver account (e.g. moved into office cash)
+  // is an internal transfer, not real spending, so it's excluded here
+  if(t.type==='expense') return true;
+  if(t.type==='withdrawal') return !(t.toAccountType && t.toAccountId);
+  return false;
 }
 function projectCodeLabel(p){
   if(!p || p.projectCode==null) return "";
@@ -910,6 +918,9 @@ function accountBalance(type, id){
     if(t.type==="transfer"){
       if(t.accountType===type && t.accountId===id) bal -= Number(t.amount);
       if(t.toAccountType===type && t.toAccountId===id) bal += Number(t.amount);
+    } else if(t.type==="withdrawal" && t.toAccountType && t.toAccountId){
+      if(t.accountType===type && t.accountId===id) bal -= Number(t.amount);
+      if(t.toAccountType===type && t.toAccountId===id) bal += Number(t.amount);
     } else if(t.accountType===type && t.accountId===id){
       bal += (t.type==="income"? Number(t.amount) : -Number(t.amount));
     }
@@ -923,7 +934,7 @@ function companyTotals(){
   let income=0, expense=0;
   DB.transactions.forEach(t=>{
     if(t.type==="income") income += Number(t.amount);
-    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
+    if(isRealExpense(t)) expense += Number(t.amount);
   });
   return {income, expense, net: income-expense};
 }
@@ -931,15 +942,20 @@ function projectTotals(projectId){
   let income=0, expense=0;
   DB.transactions.filter(t=>t.projectId===projectId).forEach(t=>{
     if(t.type==="income") income += Number(t.amount);
-    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
+    if(isRealExpense(t)) expense += Number(t.amount);
   });
   return {income, expense, net: income-expense};
 }
+function isOfficeExpenseEntry(t){
+  // blank-project entries that are really a withdrawal parked into a cash
+  // account aren't "office expense" — they're just an internal transfer
+  return !t.projectId && !(t.toAccountType && t.toAccountId);
+}
 function officeExpenseTotals(){
   let income=0, expense=0;
-  DB.transactions.filter(t=>!t.projectId).forEach(t=>{
+  DB.transactions.filter(isOfficeExpenseEntry).forEach(t=>{
     if(t.type==="income") income += Number(t.amount);
-    if(t.type==="expense" || t.type==="withdrawal") expense += Number(t.amount);
+    if(isRealExpense(t)) expense += Number(t.amount);
   });
   return {income, expense, net: income-expense};
 }
@@ -1024,8 +1040,8 @@ function exportAllReportsExcel(){
   const txnRows = [[L('col_date'), L('col_type'), L('col_project'), L('col_account'), L('col_category'), L('col_description'), L('col_voucher_no'), L('col_method'), L('col_cheque_no'), L('col_cheque_bank'), L('col_withdrawn_by'), L('col_amount'), L('col_created_by')]];
   [...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
     let accStr = accountName(t.accountType, t.accountId);
-    if(t.type==='transfer'){ accStr += " -> " + accountName(t.toAccountType, t.toAccountId); }
-    const signedAmount = (t.type==='expense'||t.type==='withdrawal')? -Number(t.amount) : Number(t.amount);
+    if(t.type==='transfer' || (t.type==='withdrawal' && t.toAccountType && t.toAccountId)){ accStr += " -> " + accountName(t.toAccountType, t.toAccountId); }
+    const signedAmount = (isRealExpense(t))? -Number(t.amount) : Number(t.amount);
     const methodStr = t.method==='cheque'? L('cheque_method') : (t.method==='bank_transfer'? L('bank_transfer_method') : (t.method==='cash'? L('cash_method') : ''));
     txnRows.push([t.date, typeLabel(t.type), projectName(t.projectId), accStr, t.category||'', t.desc||'', t.voucherNo||'', methodStr, t.chequeNo||'', t.chequeBankName||'', t.withdrawnBy||'', signedAmount, t.createdBy||'']);
   });
@@ -1431,7 +1447,7 @@ function rowTxn(t, opts={}){
     <td>${fmtDate(t.date)}</td>
     <td>${typeTag}</td>
     ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
-    <td>${accTag}${t.type==='transfer'?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
+    <td>${accTag}${(t.type==='transfer' || (t.type==='withdrawal' && t.toAccountType && t.toAccountId))?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
     <td>${t.category||"-"}</td>
     <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${voucherHint}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
     <td class="amt ${amtClass}">${sign}${fmt(t.amount)}</td>
@@ -1605,7 +1621,7 @@ function pageAccountDetail(kind, id){
 
 function pageOfficeExpense(){
   const t = officeExpenseTotals();
-  const txns = DB.transactions.filter(x=>!x.projectId).sort((a,b)=>b.date.localeCompare(a.date));
+  const txns = DB.transactions.filter(isOfficeExpenseEntry).sort((a,b)=>b.date.localeCompare(a.date));
   return `
   <div class="grid grid-3">
     <div class="card stat-card stat-lime"><div class="label">${L('income')}</div><div class="value num" style="font-size:20px;">${fmt(t.income)}</div></div>
@@ -1624,7 +1640,7 @@ function pageOfficeExpense(){
 function applyFilters(list){
   return list.filter(t=>{
     if(FILTERS.type && t.type!==FILTERS.type) return false;
-    if(FILTERS.projectId==="__company__" && t.projectId) return false;
+    if(FILTERS.projectId==="__company__" && !isOfficeExpenseEntry(t)) return false;
     if(FILTERS.projectId && FILTERS.projectId!=="__company__" && t.projectId!==FILTERS.projectId) return false;
     if(FILTERS.accountType && t.accountType!==FILTERS.accountType) return false;
     if(FILTERS.accountId && t.accountId!==FILTERS.accountId) return false;
@@ -1641,7 +1657,7 @@ function applyFilters(list){
 function pageTransactions(){
   const list = applyFilters([...DB.transactions]).sort((a,b)=>b.date.localeCompare(a.date));
   const sumIn = list.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
-  const sumOut = list.filter(t=>t.type==='expense'||t.type==='withdrawal').reduce((s,t)=>s+Number(t.amount),0);
+  const sumOut = list.filter(t=>isRealExpense(t)).reduce((s,t)=>s+Number(t.amount),0);
   return `
   <div class="filter-bar">
     <select id="fType"><option value="">${L('all_types')}</option><option value="income" ${FILTERS.type==='income'?'selected':''}>${L('income')}</option><option value="expense" ${FILTERS.type==='expense'?'selected':''}>${L('expense')}</option><option value="withdrawal" ${FILTERS.type==='withdrawal'?'selected':''}>${L('withdrawal')}</option><option value="transfer" ${FILTERS.type==='transfer'?'selected':''}>${L('transfer')}</option></select>
@@ -1711,7 +1727,7 @@ function pageReports(){
 }
 function categoryBreakdown(){
   const map = {};
-  DB.transactions.filter(t=>t.type==='expense' || t.type==='withdrawal').forEach(t=>{
+  DB.transactions.filter(t=>isRealExpense(t)).forEach(t=>{
     const cat = t.category||L('other_category');
     map[cat] = (map[cat]||0) + Number(t.amount);
   });
@@ -2015,11 +2031,8 @@ function formTransaction(existing, presets={}){
         <div class="field"><label>${L('amount_bdt_req')}</label><input type="number" id="tfAmount" value="${t.amount}" placeholder="0"></div>
       </div>
       <div class="field" id="tfProjectWrap">
-        <label>${L('project_optional')}</label>
-        <select id="tfProject">
-          <option value="">${L('general_company')}</option>
-          ${DB.projects.map(p=>`<option value="${p.id}" ${t.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
-        </select>
+        <label id="tfProjectLabel">${L('project_optional')}</label>
+        <select id="tfProject"></select>
       </div>
       <div class="field-row" id="tfToWrap" style="display:none;">
         <div class="field"><label>${L('recipient_acc_type')}</label>
@@ -2071,6 +2084,8 @@ function formTransaction(existing, presets={}){
     const catWrap = overlay.querySelector("#tfCatWrap");
     const toWrap = overlay.querySelector("#tfToWrap");
     const projWrap = overlay.querySelector("#tfProjectWrap");
+    const projectSel = overlay.querySelector("#tfProject");
+    const projectLabel = overlay.querySelector("#tfProjectLabel");
     const chequeWrap = overlay.querySelector("#tfChequeWrap");
     const methodWrap = overlay.querySelector("#tfMethodWrap");
     const inChequeWrap = overlay.querySelector("#tfInChequeWrap");
@@ -2079,6 +2094,19 @@ function formTransaction(existing, presets={}){
     const typeWrap = overlay.querySelector("#tfTypeWrap");
 
     let currentType = initialType;
+    let initialReceiverValue = t.projectId || (t.toAccountType==='cash' && t.toAccountId? ('cash:'+t.toAccountId) : "");
+
+    function refreshReceiverOptions(){
+      const prevVal = projectSel.options.length? projectSel.value : initialReceiverValue;
+      let html = `<option value="">${L('general_company')}</option>`;
+      html += DB.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+      if(currentType==='withdrawal'){
+        html += DB.cash.map(c=>`<option value="cash:${c.id}">💵 ${c.name}</option>`).join("");
+      }
+      projectSel.innerHTML = html;
+      projectSel.value = prevVal;
+      if(projectLabel) projectLabel.textContent = currentType==='withdrawal'? L('receiver_label') : L('project_optional');
+    }
 
     function renderTypeRadio(){
       const allowed = typesForAccount(accTypeSel.value);
@@ -2149,9 +2177,11 @@ function formTransaction(existing, presets={}){
       } else if(currentType==='withdrawal'){
         catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
         catSel.innerHTML = renderCatOptions('expense');
+        refreshReceiverOptions();
       } else {
         catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
         catSel.innerHTML = renderCatOptions(currentType);
+        refreshReceiverOptions();
       }
       refreshChequeVisibility();
     }
@@ -2191,8 +2221,16 @@ function formTransaction(existing, presets={}){
           toast(L('toast_same_account_transfer')); return;
         }
       } else {
-        const pid = overlay.querySelector("#tfProject").value;
-        data.projectId = pid || null;
+        const rawVal = overlay.querySelector("#tfProject").value;
+        if(type==='withdrawal' && rawVal.startsWith('cash:')){
+          data.projectId = null;
+          data.toAccountType = 'cash';
+          data.toAccountId = rawVal.slice(5);
+        } else {
+          data.projectId = rawVal || null;
+          data.toAccountType = null;
+          data.toAccountId = null;
+        }
         data.category = catSel.value || (DB.categories[type==='withdrawal'?'expense':type][0]||"");
       }
       if(type==='withdrawal'){
