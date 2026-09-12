@@ -334,6 +334,20 @@ const DICT = {
   done_projects_profit_breakdown:{bn:"সম্পন্ন প্রজেক্টের লাভের বিবরণ", en:"Completed Projects' Profit Breakdown"},
   company_profit_breakdown:{bn:"কোম্পানির লাভ — প্রজেক্ট অনুযায়ী", en:"Company Profit — By Project"},
   shareholders_profit_breakdown:{bn:"শেয়ারহোল্ডারদের লাভ — প্রজেক্ট অনুযায়ী", en:"Shareholders Profit — By Project"},
+  add_shareholder_btn:{bn:"শেয়ারহোল্ডার যোগ করুন", en:"Add Shareholder"},
+  edit_shareholder_title:{bn:"শেয়ারহোল্ডার সম্পাদনা", en:"Edit Shareholder"},
+  shareholder_name_label:{bn:"নাম", en:"Name"},
+  shareholder_nid_label:{bn:"এনআইডি নম্বর", en:"NID Number"},
+  shareholder_nid_ph:{bn:"জাতীয় পরিচয়পত্র নম্বর", en:"National ID card number"},
+  shareholder_percent_label:{bn:"শেয়ারের শতাংশ (%)", en:"Share Percentage (%)"},
+  shareholder_nid_privacy_note:{bn:"⚠️ এটি স্পর্শকাতর তথ্য — শুধু অ্যাডমিন এই তথ্য দেখতে/পরিবর্তন করতে পারবেন এমনটা নিশ্চিত করুন।", en:"⚠️ This is sensitive information — make sure only trusted admins have access to it."},
+  toast_invalid_percent:{bn:"শতাংশ ০ থেকে ১০০ এর মধ্যে হতে হবে", en:"Percentage must be between 0 and 100"},
+  toast_shareholder_saved:{bn:"শেয়ারহোল্ডার সংরক্ষিত হয়েছে", en:"Shareholder saved"},
+  toast_shareholder_deleted:{bn:"শেয়ারহোল্ডার মুছে ফেলা হয়েছে", en:"Shareholder deleted"},
+  confirm_del_shareholder:{bn:"এই শেয়ারহোল্ডারকে মুছে ফেলবেন?", en:"Delete this shareholder?"},
+  shareholders_list:{bn:"শেয়ারহোল্ডার তালিকা", en:"Shareholders List"},
+  no_shareholders_yet:{bn:"এখনো কোনো শেয়ারহোল্ডার যোগ করা হয়নি", en:"No shareholders added yet"},
+  total_share_percent_note:{bn:"মোট শেয়ার: {p}% (১০০% হওয়া উচিত)", en:"Total share allocated: {p}% (should equal 100%)"},
   no_done_projects:{bn:"এখনো কোনো প্রজেক্ট সম্পন্ন (Done) হয়নি", en:"No projects marked Done yet"},
   profit_display_only_note:{bn:"⚠️ এই পেজটি শুধু তথ্য দেখানোর জন্য — এখানে কোনো কিছুই কোনো ব্যাংক বা ক্যাশ হিসাবের ব্যালেন্স পরিবর্তন করে না।", en:"⚠️ This page is for display only — nothing here changes any bank or cash account balance."},
   nav_settings:{bn:"সেটিংস", en:"Settings"},
@@ -741,6 +755,7 @@ function defaultDB(){
     cash:[],
     transactions:[],
     users:[],
+    shareholders:[],
     categories:{ income:[], expense:[] }
   };
 }
@@ -753,22 +768,25 @@ function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", 
 function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
 function mapUserRow(r){ return {id:r.id, username:r.username, role:r.role||"user", disabled:!!r.disabled, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
+function mapShareholderRow(r){ return {id:r.id, name:r.name, nidNumber:r.nid_number||"", sharePercent:Number(r.share_percent)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 
 function projectToRow(p){ return {name:p.name, client:p.client||null, start_date:p.startDate||null, budget:p.budget||0, status:p.status||"running", notes:p.notes||null, created_by:p.createdBy||null, updated_by:p.updatedBy||null, progress_percent:(p.progressPercent!=null?p.progressPercent:0)}; }
 function bankToRow(a){ return {name:a.name, bank_name:a.bankName||null, branch:a.branch||null, acc_no:a.accNo||null, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
 function cashToRow(a){ return {name:a.name, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
 function txnToRow(t){ return {date:t.date, type:t.type, project_id:t.projectId||null, account_type:t.accountType||null, account_id:t.accountId||null, to_account_type:t.toAccountType||null, to_account_id:t.toAccountId||null, category:t.category||null, description:t.desc||null, voucher_no:t.voucherNo||null, method:t.method||null, cheque_no:t.chequeNo||null, cheque_bank_name:t.chequeBankName||null, withdrawn_by:t.withdrawnBy||null, amount:t.amount, created_by:t.createdBy||null, updated_by:t.updatedBy||null}; }
+function shareholderToRow(s){ return {name:s.name, nid_number:s.nidNumber||null, share_percent:s.sharePercent||0, created_by:s.createdBy||null, updated_by:s.updatedBy||null}; }
 
 async function fetchAllData(){
   try{
-    const [companyRes, projRes, bankRes, cashRes, txnRes, profRes, catRes] = await Promise.all([
+    const [companyRes, projRes, bankRes, cashRes, txnRes, profRes, catRes, shRes] = await Promise.all([
       SB.from("company").select("*").eq("id",1).single(),
       SB.from("projects").select("*"),
       SB.from("bank_accounts").select("*"),
       SB.from("cash_accounts").select("*"),
       SB.from("transactions").select("*"),
       SB.from("profiles").select("*"),
-      SB.from("categories").select("*")
+      SB.from("categories").select("*"),
+      SB.from("shareholders").select("*")
     ]);
     if(companyRes.error) throw companyRes.error;
     if(projRes.error) throw projRes.error;
@@ -777,6 +795,7 @@ async function fetchAllData(){
     if(txnRes.error) throw txnRes.error;
     if(profRes.error) throw profRes.error;
     if(catRes.error) throw catRes.error;
+    if(shRes.error) throw shRes.error;
 
     const cr = companyRes.data || {};
     DB.company = { name: cr.name || "General Power Engineering LTD", tagline: cr.tagline || "Trusted In Power Distribution", logo: cr.logo || null };
@@ -785,6 +804,7 @@ async function fetchAllData(){
     DB.cash = (cashRes.data||[]).map(mapCashRow);
     DB.transactions = (txnRes.data||[]).map(mapTxnRow);
     DB.users = (profRes.data||[]).map(mapUserRow);
+    DB.shareholders = (shRes.data||[]).map(mapShareholderRow);
     DB.categories = { income:[], expense:[] };
     (catRes.data||[]).forEach(c=>{ if(DB.categories[c.kind]) DB.categories[c.kind].push(c.name); });
     return true;
@@ -860,6 +880,7 @@ function setupRealtimeSync(){
     .on("postgres_changes", {event:"*", schema:"public", table:"transactions"}, onChange)
     .on("postgres_changes", {event:"*", schema:"public", table:"categories"}, onChange)
     .on("postgres_changes", {event:"*", schema:"public", table:"profiles"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"shareholders"}, onChange)
     .on("postgres_changes", {event:"*", schema:"public", table:"company"}, onChange)
     .subscribe();
 }
@@ -1674,7 +1695,9 @@ function pageProfit(){
     <div class="card stat-card stat-teal" data-profit-view="company" style="cursor:pointer; ${cardActive('company')}"><div class="label">${L('company_profit')}</div><div class="value num" style="font-size:20px;">${fmt(companyProfit)}</div></div>
     <div class="card stat-card stat-amber" data-profit-view="shareholders" style="cursor:pointer; ${cardActive('shareholders')}"><div class="label">${L('shareholders_profit')}</div><div class="value num" style="font-size:20px;">${fmt(shareholdersProfit)}</div></div>
   </div>
-  <div class="section-title"><div><h2>${viewTitle[PROFIT_VIEW]}</h2></div></div>
+  <div class="section-title"><div><h2>${viewTitle[PROFIT_VIEW]}</h2></div>
+    ${(PROFIT_VIEW==='shareholders' && isAdmin())? `<button class="btn btn-primary btn-sm" id="btnAddShareholder">+ ${L('add_shareholder_btn')}</button>`:""}
+  </div>
   <div class="table-wrap">
     <table>
       <thead><tr><th>#</th><th>${L('col_project')}</th><th style="text-align:right;">${col.label}</th></tr></thead>
@@ -1687,7 +1710,36 @@ function pageProfit(){
       </tbody>
     </table>
   </div>
+  ${PROFIT_VIEW==='shareholders'? shareholderBreakdownHtml(shareholdersProfit) : ""}
   <p class="hint" style="margin-top:14px;">${L('profit_display_only_note')}</p>
+  `;
+}
+
+function shareholderBreakdownHtml(shareholdersProfitPool){
+  const totalPercent = DB.shareholders.reduce((s,sh)=>s+Number(sh.sharePercent||0), 0);
+  const rows = DB.shareholders.map(sh=>{
+    const amount = shareholdersProfitPool * (Number(sh.sharePercent||0)/100);
+    return `<tr>
+      <td>${sh.name}</td>
+      <td class="num">${sh.nidNumber||"-"}</td>
+      <td class="amt">${Number(sh.sharePercent||0)}%</td>
+      <td class="amt">${fmt(amount)}</td>
+      <td style="text-align:right; white-space:nowrap;">
+        ${isAdmin()? `
+        <button class="btn btn-ghost btn-sm" data-edit-shareholder="${sh.id}">✎</button>
+        <button class="btn btn-ghost btn-sm" data-del-shareholder="${sh.id}" style="color:var(--red-600)">🗑</button>`:""}
+      </td>
+    </tr>`;
+  }).join("");
+  return `
+  <div class="section-title"><div><h2>${L('shareholders_list')}</h2></div></div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>${L('shareholder_name_label')}</th><th>${L('shareholder_nid_label')}</th><th style="text-align:right;">${L('shareholder_percent_label')}</th><th style="text-align:right;">${L('shareholders_profit')}</th><th></th></tr></thead>
+      <tbody>${rows || `<tr class="empty-row"><td colspan="5">${L('no_shareholders_yet')}</td></tr>`}</tbody>
+    </table>
+  </div>
+  <p class="hint" style="margin-top:8px; ${totalPercent!==100?'color:var(--bad); font-weight:600;':''}">${L('total_share_percent_note',{p:totalPercent})}</p>
   `;
 }
 
@@ -2042,6 +2094,46 @@ function formAccount(kind, existing){
   });
 }
 
+function formShareholder(existing){
+  const s = existing || {name:"", nidNumber:"", sharePercent:""};
+  openModal(`
+    <div class="modal-head"><h3>${existing? L('edit_shareholder_title'):L('add_shareholder_btn')}</h3><button class="close-x" id="mClose">×</button></div>
+    <div class="modal-body">
+      <div class="field"><label>${L('shareholder_name_label')}</label><input id="shName" value="${s.name}"></div>
+      <div class="field"><label>${L('shareholder_nid_label')}</label><input id="shNid" value="${s.nidNumber||''}" placeholder="${L('shareholder_nid_ph')}"></div>
+      <div class="field"><label>${L('shareholder_percent_label')}</label><input type="number" id="shPercent" value="${s.sharePercent}" min="0" max="100" step="0.01"></div>
+      <p class="hint" style="margin-top:-6px;">${L('shareholder_nid_privacy_note')}</p>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="mCancel">${L('cancel')}</button>
+      <button class="btn btn-primary" id="shSave">${L('save')}</button>
+    </div>
+  `, (overlay)=>{
+    overlay.querySelector("#mClose").onclick = closeModal;
+    overlay.querySelector("#mCancel").onclick = closeModal;
+    overlay.querySelector("#shSave").onclick = async ()=>{
+      const name = overlay.querySelector("#shName").value.trim();
+      const nidNumber = overlay.querySelector("#shNid").value.trim();
+      const sharePercent = Number(overlay.querySelector("#shPercent").value);
+      if(!name){ toast(L('toast_name_required')); return; }
+      if(isNaN(sharePercent) || sharePercent<0 || sharePercent>100){ toast(L('toast_invalid_percent')); return; }
+      const data = { name, nidNumber, sharePercent };
+      const saveBtn = overlay.querySelector("#shSave"); saveBtn.disabled = true;
+      let error;
+      if(existing){
+        stampUpdated(data);
+        ({error} = await SB.from("shareholders").update(shareholderToRow({...existing, ...data})).eq("id", existing.id));
+      } else {
+        stampCreated(data);
+        ({error} = await SB.from("shareholders").insert(shareholderToRow(data)));
+      }
+      saveBtn.disabled = false;
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      closeModal(); await refreshAndRender(); toast(L('toast_shareholder_saved'));
+    };
+  });
+}
+
 function formTransaction(existing, presets={}){
   const defaultAccType = presets.accountType || (DB.banks[0]?"bank":"cash");
   const defaultType = defaultAccType==='bank' ? 'withdrawal' : 'expense';
@@ -2374,6 +2466,20 @@ function bindGlobalEvents(){
   if(addBank) addBank.onclick = ()=> formAccount("bank", null);
   const addCash = document.getElementById("btnAddCash");
   if(addCash) addCash.onclick = ()=> formAccount("cash", null);
+
+  const addShareholder = document.getElementById("btnAddShareholder");
+  if(addShareholder) addShareholder.onclick = ()=> formShareholder(null);
+  document.querySelectorAll("[data-edit-shareholder]").forEach(el=>{
+    el.addEventListener("click",()=>{ const s = DB.shareholders.find(x=>x.id===el.dataset.editShareholder); formShareholder(s); });
+  });
+  document.querySelectorAll("[data-del-shareholder]").forEach(el=>{
+    el.addEventListener("click",async ()=>{
+      if(!confirm(L('confirm_del_shareholder'))) return;
+      const { error } = await SB.from("shareholders").delete().eq("id", el.dataset.delShareholder);
+      if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      await refreshAndRender(); toast(L('toast_shareholder_deleted'));
+    });
+  });
 
   document.querySelectorAll("[data-edit-project]").forEach(el=>{
     el.addEventListener("click",(e)=>{ e.stopPropagation(); const p = DB.projects.find(x=>x.id===el.dataset.editProject); formProject(p); });
