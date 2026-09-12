@@ -1490,8 +1490,7 @@ function pageProjects(){
     <button class="btn btn-primary btn-sm" id="btnAddProject">+ ${L('new_project')}</button>
   </div>
   <div class="grid grid-3">
-    ${q? "" : officeExpenseCard()}
-    ${filtered.map(p=>projectCard(p)).join("") || (q? emptyState("🔍", L('no_project_match')):"")}
+    ${filtered.map(p=>projectCard(p)).join("") || emptyState("🏗️", q? L('no_project_match') : L('no_projects_yet'))}
   </div>`;
 }
 
