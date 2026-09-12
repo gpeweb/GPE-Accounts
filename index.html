@@ -1242,6 +1242,7 @@ function sidebar(){
       ${navItem("projects","🏗️",L('nav_projects'))}
       ${navItem("banks","🏦",L('nav_banks'))}
       ${navItem("cash","💵",L('nav_cash'))}
+      ${navItem("officeExpense","🏢",L('general_company'))}
       ${navItem("transactions","📒",L('nav_transactions'))}
       <div class="nav-group-label">${L('nav_group_other')}</div>
       ${navItem("reports","📈",L('nav_reports'))}
@@ -1266,6 +1267,7 @@ function pageTitleFor(){
     bankDetail:[L('title_bankDetail'),""],
     cash:[L('title_cash'),L('sub_cash')],
     cashDetail:[L('title_cashDetail'),""],
+    officeExpense:[L('general_company'),L('office_expense_card_hint')],
     transactions:[L('title_transactions'),L('sub_transactions')],
     reports:[L('title_reports'),L('sub_reports')],
     settings:[L('title_settings'),L('sub_settings')],
@@ -1302,6 +1304,7 @@ function pageBody(){
     case "bankDetail": return pageAccountDetail("bank", ROUTE.id);
     case "cash": return pageAccounts("cash");
     case "cashDetail": return pageAccountDetail("cash", ROUTE.id);
+    case "officeExpense": return pageOfficeExpense();
     case "transactions": return pageTransactions();
     case "reports": return pageReports();
     case "settings": return pageSettings();
@@ -1597,6 +1600,23 @@ function pageAccountDetail(kind, id){
     <button class="btn btn-primary btn-sm" data-add-txn-account="${kind}:${a.id}">+ ${L('add_txn')}</button>
   </div>
   ${transactionsTable(txns, {showProject:true})}
+  `;
+}
+
+function pageOfficeExpense(){
+  const t = officeExpenseTotals();
+  const txns = DB.transactions.filter(x=>!x.projectId).sort((a,b)=>b.date.localeCompare(a.date));
+  return `
+  <div class="grid grid-3">
+    <div class="card stat-card stat-lime"><div class="label">${L('income')}</div><div class="value num" style="font-size:20px;">${fmt(t.income)}</div></div>
+    <div class="card stat-card stat-red"><div class="label">${L('expense')}</div><div class="value num" style="font-size:20px;">${fmt(t.expense)}</div></div>
+    <div class="card stat-card stat-teal"><div class="label">${L('net')}</div><div class="value num" style="font-size:20px; color:${t.net>=0?'var(--ok)':'var(--bad)'}">${fmt(t.net)}</div></div>
+  </div>
+  <div class="section-title">
+    <div><h2>${L('general_company')}</h2></div>
+    <button class="btn btn-primary btn-sm" data-add-txn-office="1">+ ${L('add_txn')}</button>
+  </div>
+  ${transactionsTable(txns)}
   `;
 }
 
@@ -2289,6 +2309,9 @@ function bindGlobalEvents(){
   });
   document.querySelectorAll("[data-add-txn-account]").forEach(el=>{
     el.addEventListener("click",()=>{ const [kind,id]=el.dataset.addTxnAccount.split(":"); formTransaction(null,{accountType:kind, accountId:id}); });
+  });
+  document.querySelectorAll("[data-add-txn-office]").forEach(el=>{
+    el.addEventListener("click",()=> formTransaction(null, {}));
   });
   document.querySelectorAll("[data-edit-txn]").forEach(el=>{
     el.addEventListener("click",(e)=>{ e.stopPropagation(); const t = DB.transactions.find(x=>x.id===el.dataset.editTxn); formTransaction(t); });
