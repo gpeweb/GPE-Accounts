@@ -332,6 +332,8 @@ const DICT = {
   company_profit:{bn:"কোম্পানির লাভ", en:"Company Profit"},
   shareholders_profit:{bn:"শেয়ারহোল্ডারদের লাভ", en:"Shareholders Profit"},
   done_projects_profit_breakdown:{bn:"সম্পন্ন প্রজেক্টের লাভের বিবরণ", en:"Completed Projects' Profit Breakdown"},
+  company_profit_breakdown:{bn:"কোম্পানির লাভ — প্রজেক্ট অনুযায়ী", en:"Company Profit — By Project"},
+  shareholders_profit_breakdown:{bn:"শেয়ারহোল্ডারদের লাভ — প্রজেক্ট অনুযায়ী", en:"Shareholders Profit — By Project"},
   no_done_projects:{bn:"এখনো কোনো প্রজেক্ট সম্পন্ন (Done) হয়নি", en:"No projects marked Done yet"},
   profit_display_only_note:{bn:"⚠️ এই পেজটি শুধু তথ্য দেখানোর জন্য — এখানে কোনো কিছুই কোনো ব্যাংক বা ক্যাশ হিসাবের ব্যালেন্স পরিবর্তন করে না।", en:"⚠️ This page is for display only — nothing here changes any bank or cash account balance."},
   nav_settings:{bn:"সেটিংস", en:"Settings"},
@@ -1648,29 +1650,40 @@ function pageOfficeExpense(){
 function doneProjectsProfitList(){
   return DB.projects.filter(p=>p.status==='done').map(p=>({ project:p, profit: projectTotals(p.id).net }));
 }
+let PROFIT_VIEW = "total";
 function pageProfit(){
   const list = doneProjectsProfitList();
   const totalProfit = list.reduce((s,x)=>s+x.profit, 0);
   const companyProfit = totalProfit * 0.5;
   const shareholdersProfit = totalProfit * 0.5;
+  const cardActive = (v)=> PROFIT_VIEW===v? "box-shadow:0 0 0 2px var(--teal-500) inset;" : "";
+  const viewCols = {
+    total: {label:L('net'), calc:(p)=>p},
+    company: {label:L('company_profit'), calc:(p)=>p*0.5},
+    shareholders: {label:L('shareholders_profit'), calc:(p)=>p*0.5}
+  };
+  const viewTitle = {
+    total: L('done_projects_profit_breakdown'),
+    company: L('company_profit_breakdown'),
+    shareholders: L('shareholders_profit_breakdown')
+  };
+  const col = viewCols[PROFIT_VIEW];
   return `
   <div class="grid grid-3">
-    <div class="card stat-card stat-lime"><div class="label">${L('total_profit_projects')}</div><div class="value num" style="font-size:20px; color:${totalProfit>=0?'var(--ok)':'var(--bad)'}">${fmt(totalProfit)}</div></div>
-    <div class="card stat-card stat-teal"><div class="label">${L('company_profit')}</div><div class="value num" style="font-size:20px;">${fmt(companyProfit)}</div></div>
-    <div class="card stat-card stat-amber"><div class="label">${L('shareholders_profit')}</div><div class="value num" style="font-size:20px;">${fmt(shareholdersProfit)}</div></div>
+    <div class="card stat-card stat-lime" data-profit-view="total" style="cursor:pointer; ${cardActive('total')}"><div class="label">${L('total_profit_projects')}</div><div class="value num" style="font-size:20px; color:${totalProfit>=0?'var(--ok)':'var(--bad)'}">${fmt(totalProfit)}</div></div>
+    <div class="card stat-card stat-teal" data-profit-view="company" style="cursor:pointer; ${cardActive('company')}"><div class="label">${L('company_profit')}</div><div class="value num" style="font-size:20px;">${fmt(companyProfit)}</div></div>
+    <div class="card stat-card stat-amber" data-profit-view="shareholders" style="cursor:pointer; ${cardActive('shareholders')}"><div class="label">${L('shareholders_profit')}</div><div class="value num" style="font-size:20px;">${fmt(shareholdersProfit)}</div></div>
   </div>
-  <div class="section-title"><div><h2>${L('done_projects_profit_breakdown')}</h2></div></div>
+  <div class="section-title"><div><h2>${viewTitle[PROFIT_VIEW]}</h2></div></div>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>#</th><th>${L('col_project')}</th><th style="text-align:right;">${L('net')}</th><th style="text-align:right;">${L('company_profit')} (50%)</th><th style="text-align:right;">${L('shareholders_profit')} (50%)</th></tr></thead>
+      <thead><tr><th>#</th><th>${L('col_project')}</th><th style="text-align:right;">${col.label}</th></tr></thead>
       <tbody>
         ${list.map((x,i)=>`<tr>
           <td>${i+1}</td>
           <td>${projectCodeLabel(x.project)? (projectCodeLabel(x.project)+' · '):''}${x.project.name}</td>
-          <td class="amt">${fmt(x.profit)}</td>
-          <td class="amt">${fmt(x.profit*0.5)}</td>
-          <td class="amt">${fmt(x.profit*0.5)}</td>
-        </tr>`).join("") || `<tr class="empty-row"><td colspan="5">${L('no_done_projects')}</td></tr>`}
+          <td class="amt">${fmt(col.calc(x.profit))}</td>
+        </tr>`).join("") || `<tr class="empty-row"><td colspan="3">${L('no_done_projects')}</td></tr>`}
       </tbody>
     </table>
   </div>
@@ -2348,6 +2361,13 @@ function bindGlobalEvents(){
   if(officeExpenseCardEl) officeExpenseCardEl.addEventListener("click", ()=>{
     FILTERS = {type:"",scope:"",projectId:"__company__",accountType:"",accountId:"",from:"",to:"",q:""};
     navigate("transactions");
+  });
+
+  document.querySelectorAll("[data-profit-view]").forEach(el=>{
+    el.addEventListener("click", ()=>{
+      PROFIT_VIEW = el.dataset.profitView;
+      render();
+    });
   });
 
   const addBank = document.getElementById("btnAddBank");
