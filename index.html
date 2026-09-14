@@ -1310,7 +1310,7 @@ function sidebar(){
       ${navItem("banks","🏦",L('nav_banks'))}
       ${navItem("cash","💵",L('nav_cash'))}
       ${navItem("officeExpense","🏢",L('general_company'))}
-      ${navItem("employeeAdvance","🧑‍💼",L('nav_employee_advance'))}
+      ${navItem("employeeAdvance","💼",L('nav_employee_advance'))}
       ${navItem("transactions","📒",L('nav_transactions'))}
       <div class="nav-group-label">${L('nav_group_other')}</div>
       ${navItem("profit","💹",L('nav_profit'))}
@@ -2409,7 +2409,7 @@ function formTransaction(existing, presets={}){
         refreshReceiverOptions();
       } else {
         catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
-        catSel.innerHTML = renderCatOptions(currentType);
+        catSel.innerHTML = renderCatOptions(currentType, accTypeSel.value==='bank');
         refreshReceiverOptions();
       }
       refreshChequeVisibility();
