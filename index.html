@@ -462,6 +462,18 @@ const DICT = {
   all_projects:{bn:"সকল প্রজেক্ট", en:"All Projects"},
   general_company:{bn:"অফিস খরচ", en:"Office Expense"},
   office_expense_card_hint:{bn:"প্রজেক্ট ছাড়া সব খরচ এখানে জমা হয় — ক্লিক করে বিস্তারিত দেখুন", en:"All non-project expenses land here — click to see details"},
+  nav_employee_advance:{bn:"কর্মচারী অগ্রিম", en:"Employee Advance"},
+  employee_advance_page_hint:{bn:"ক্যাশ থেকে কর্মচারীদের অগ্রিম প্রদান ও ফেরতের হিসাব", en:"Track cash advances given to employees and their repayments"},
+  employee_name_label:{bn:"কর্মচারীর নাম", en:"Employee Name"},
+  employee_name_ph:{bn:"কর্মচারীর নাম লিখুন", en:"Enter employee's name"},
+  toast_employee_name_required:{bn:"কর্মচারীর নাম আবশ্যক", en:"Employee name is required"},
+  total_advance_given:{bn:"মোট প্রদত্ত অগ্রিম", en:"Total Advance Given"},
+  total_advance_repaid:{bn:"মোট ফেরত পাওয়া", en:"Total Repaid"},
+  total_outstanding:{bn:"মোট বকেয়া", en:"Total Outstanding"},
+  employee_advance_balances:{bn:"কর্মচারী অনুযায়ী হিসাব", en:"Balances By Employee"},
+  outstanding_balance:{bn:"বকেয়া", en:"Outstanding"},
+  no_employee_advances:{bn:"এখনো কোনো অগ্রিম এন্ট্রি নেই", en:"No advance entries yet"},
+  employee_advance_hint:{bn:"অগ্রিম দেওয়ার সময় Expense + 'Employee Advance' ক্যাটাগরি বেছে নিন; ফেরত পেলে Income + একই ক্যাটাগরি বেছে নিন — এটা শুধু ক্যাশ হিসাবের জন্য প্রযোজ্য।", en:"When giving an advance, pick Expense + the 'Employee Advance' category; when it's repaid, pick Income + the same category — this only applies to cash accounts."},
   all_accounts:{bn:"সকল হিসাব", en:"All Accounts"},
   search_placeholder:{bn:"খুঁজুন...", en:"Search..."},
   reset:{bn:"রিসেট", en:"Reset"},
@@ -704,6 +716,7 @@ function todayStr(){ return new Date().toISOString().slice(0,10); }
 function statusLabel(status){
   return status==='done'? L('status_done') : status==='hold'? L('status_hold') : L('status_running');
 }
+const EMPLOYEE_ADVANCE_CATEGORY = "Employee Advance";
 function typeLabel(type){
   return type==='income'? L('income') : type==='expense'? L('expense') : type==='withdrawal'? L('withdrawal') : L('transfer');
 }
@@ -774,14 +787,14 @@ function editStatusFields(r){ return {isEdited:!!r.is_edited, lastEditedBy:r.las
 function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||"", projectCode:(r.project_code!=null? Number(r.project_code) : null), ...editStatusFields(r)}; }
 function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
-function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
+function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", employeeName:r.employee_name||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
 function mapUserRow(r){ return {id:r.id, username:r.username, role:r.role||"user", disabled:!!r.disabled, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 function mapShareholderRow(r){ return {id:r.id, name:r.name, nidNumber:r.nid_number||"", sharePercent:Number(r.share_percent)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||""}; }
 
 function projectToRow(p){ return {name:p.name, client:p.client||null, start_date:p.startDate||null, budget:p.budget||0, status:p.status||"running", notes:p.notes||null, created_by:p.createdBy||null, updated_by:p.updatedBy||null, progress_percent:(p.progressPercent!=null?p.progressPercent:0)}; }
 function bankToRow(a){ return {name:a.name, bank_name:a.bankName||null, branch:a.branch||null, acc_no:a.accNo||null, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
 function cashToRow(a){ return {name:a.name, opening:a.opening||0, created_by:a.createdBy||null, updated_by:a.updatedBy||null}; }
-function txnToRow(t){ return {date:t.date, type:t.type, project_id:t.projectId||null, account_type:t.accountType||null, account_id:t.accountId||null, to_account_type:t.toAccountType||null, to_account_id:t.toAccountId||null, category:t.category||null, description:t.desc||null, voucher_no:t.voucherNo||null, method:t.method||null, cheque_no:t.chequeNo||null, cheque_bank_name:t.chequeBankName||null, withdrawn_by:t.withdrawnBy||null, amount:t.amount, created_by:t.createdBy||null, updated_by:t.updatedBy||null}; }
+function txnToRow(t){ return {date:t.date, type:t.type, project_id:t.projectId||null, account_type:t.accountType||null, account_id:t.accountId||null, to_account_type:t.toAccountType||null, to_account_id:t.toAccountId||null, category:t.category||null, description:t.desc||null, voucher_no:t.voucherNo||null, method:t.method||null, cheque_no:t.chequeNo||null, cheque_bank_name:t.chequeBankName||null, withdrawn_by:t.withdrawnBy||null, employee_name:t.employeeName||null, amount:t.amount, created_by:t.createdBy||null, updated_by:t.updatedBy||null}; }
 function shareholderToRow(s){ return {name:s.name, nid_number:s.nidNumber||null, share_percent:s.sharePercent||0, created_by:s.createdBy||null, updated_by:s.updatedBy||null}; }
 
 async function fetchAllData(){
@@ -1075,16 +1088,16 @@ function exportAllReportsExcel(){
   XLSX.utils.book_append_sheet(wb, wsCash, L('xl_sheet_cash'));
 
   // All transactions sheet
-  const txnRows = [[L('col_date'), L('col_type'), L('col_project'), L('col_account'), L('col_category'), L('col_description'), L('col_voucher_no'), L('col_method'), L('col_cheque_no'), L('col_cheque_bank'), L('col_withdrawn_by'), L('col_amount'), L('col_created_by')]];
+  const txnRows = [[L('col_date'), L('col_type'), L('col_project'), L('col_account'), L('col_category'), L('col_description'), L('col_voucher_no'), L('col_method'), L('col_cheque_no'), L('col_cheque_bank'), L('col_withdrawn_by'), L('employee_name_label'), L('col_amount'), L('col_created_by')]];
   [...DB.transactions].sort((a,b)=>a.date.localeCompare(b.date)).forEach(t=>{
     let accStr = accountName(t.accountType, t.accountId);
     if(t.type==='transfer' || (t.type==='withdrawal' && t.toAccountType && t.toAccountId)){ accStr += " -> " + accountName(t.toAccountType, t.toAccountId); }
     const signedAmount = (isRealExpense(t))? -Number(t.amount) : Number(t.amount);
     const methodStr = t.method==='cheque'? L('cheque_method') : (t.method==='bank_transfer'? L('bank_transfer_method') : (t.method==='cash'? L('cash_method') : ''));
-    txnRows.push([t.date, typeLabel(t.type), projectName(t.projectId), accStr, t.category||'', t.desc||'', t.voucherNo||'', methodStr, t.chequeNo||'', t.chequeBankName||'', t.withdrawnBy||'', signedAmount, t.createdBy||'']);
+    txnRows.push([t.date, typeLabel(t.type), projectName(t.projectId), accStr, t.category||'', t.desc||'', t.voucherNo||'', methodStr, t.chequeNo||'', t.chequeBankName||'', t.withdrawnBy||'', t.employeeName||'', signedAmount, t.createdBy||'']);
   });
   const wsTxn = XLSX.utils.aoa_to_sheet(txnRows);
-  wsTxn['!cols'] = [{wch:12},{wch:10},{wch:30},{wch:26},{wch:18},{wch:34},{wch:16},{wch:12},{wch:14},{wch:20},{wch:20},{wch:14},{wch:16}];
+  wsTxn['!cols'] = [{wch:12},{wch:10},{wch:30},{wch:26},{wch:18},{wch:34},{wch:16},{wch:12},{wch:14},{wch:20},{wch:20},{wch:20},{wch:14},{wch:16}];
   XLSX.utils.book_append_sheet(wb, wsTxn, L('xl_sheet_txns'));
 
   const companyPart = (DB.company.name||"GPE").replace(/[^a-zA-Z0-9]+/g,"_").slice(0,30);
@@ -1297,6 +1310,7 @@ function sidebar(){
       ${navItem("banks","🏦",L('nav_banks'))}
       ${navItem("cash","💵",L('nav_cash'))}
       ${navItem("officeExpense","🏢",L('general_company'))}
+      ${navItem("employeeAdvance","🧑‍💼",L('nav_employee_advance'))}
       ${navItem("transactions","📒",L('nav_transactions'))}
       <div class="nav-group-label">${L('nav_group_other')}</div>
       ${navItem("profit","💹",L('nav_profit'))}
@@ -1323,6 +1337,7 @@ function pageTitleFor(){
     cash:[L('title_cash'),L('sub_cash')],
     cashDetail:[L('title_cashDetail'),""],
     officeExpense:[L('general_company'),L('office_expense_card_hint')],
+    employeeAdvance:[L('nav_employee_advance'),L('employee_advance_page_hint')],
     transactions:[L('title_transactions'),L('sub_transactions')],
     profit:[L('nav_profit'),L('profit_display_only_note')],
     reports:[L('title_reports'),L('sub_reports')],
@@ -1361,6 +1376,7 @@ function pageBody(){
     case "cash": return pageAccounts("cash");
     case "cashDetail": return pageAccountDetail("cash", ROUTE.id);
     case "officeExpense": return pageOfficeExpense();
+    case "employeeAdvance": return pageEmployeeAdvance();
     case "transactions": return pageTransactions();
     case "profit": return pageProfit();
     case "reports": return pageReports();
@@ -1484,13 +1500,14 @@ function rowTxn(t, opts={}){
     : `<button class="btn btn-ghost btn-sm" data-edit-txn="${t.id}">✎</button>
        <button class="btn btn-ghost btn-sm" data-del-txn="${t.id}" style="color:var(--red-600)">🗑</button>`;
   const voucherHint = t.voucherNo? `<div class="hint" style="margin-top:2px;">${(t.type==='income'?L('cash_receipt_no_short'):L('voucher_no_short'))}: ${t.voucherNo}</div>` : "";
+  const employeeHint = t.employeeName? `<div class="hint" style="margin-top:2px;">${L('employee_name_label')}: ${t.employeeName}</div>` : "";
   return `<tr>
     <td>${fmtDate(t.date)}</td>
     <td>${typeTag}</td>
     ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
     <td>${accTag}${(t.type==='transfer' || (t.type==='withdrawal' && t.toAccountType && t.toAccountId))?` → <span class="tag ${t.toAccountType==='bank'?'tag-bank':'tag-cash'}">${accountName(t.toAccountType,t.toAccountId)}</span>`:""}</td>
     <td>${t.category||"-"}</td>
-    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${voucherHint}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
+    <td style="color:var(--ink-600)">${t.desc||""}${(t.chequeNo||t.withdrawnBy||t.chequeBankName||t.method==='bank_transfer')?`<div class="hint" style="margin-top:3px;">${t.method==='cheque'?(L('cheque_method')+' · '):''}${t.method==='bank_transfer'?(L('bank_transfer_method')+' · '):''}${t.chequeNo?(L('cheque_no_short')+': '+t.chequeNo+' '):''}${t.chequeBankName?('('+L('cheque_bank_short')+': '+t.chequeBankName+') '):''}${t.withdrawnBy?(L('withdrawn_by_short')+': '+t.withdrawnBy):''}</div>`:""}${voucherHint}${employeeHint}${t.createdBy?`<div class="hint" style="margin-top:2px;">${L('created_by_short')}: ${t.createdBy}</div>`:""}${editStatusTag}</td>
     <td class="amt ${amtClass}">${sign}${fmt(t.amount)}</td>
     <td style="text-align:right; white-space:nowrap;">
       ${actionButtons}
@@ -1673,6 +1690,56 @@ function pageOfficeExpense(){
     <button class="btn btn-primary btn-sm" data-add-txn-office="1">+ ${L('add_txn')}</button>
   </div>
   ${transactionsTable(txns)}
+  `;
+}
+
+function employeeAdvanceEntries(){
+  return DB.transactions.filter(t=> t.accountType==='cash' && t.category===EMPLOYEE_ADVANCE_CATEGORY);
+}
+function employeeAdvanceSummary(){
+  const map = {};
+  employeeAdvanceEntries().filter(t=>t.employeeName).forEach(t=>{
+    const name = t.employeeName;
+    if(!map[name]) map[name] = {given:0, repaid:0};
+    if(t.type==='expense') map[name].given += Number(t.amount);
+    if(t.type==='income') map[name].repaid += Number(t.amount);
+  });
+  return Object.keys(map).sort((a,b)=>a.localeCompare(b)).map(name=>({
+    name, given:map[name].given, repaid:map[name].repaid, outstanding: map[name].given - map[name].repaid
+  }));
+}
+function pageEmployeeAdvance(){
+  const summary = employeeAdvanceSummary();
+  const totalGiven = summary.reduce((s,x)=>s+x.given,0);
+  const totalRepaid = summary.reduce((s,x)=>s+x.repaid,0);
+  const totalOutstanding = totalGiven - totalRepaid;
+  const txns = employeeAdvanceEntries().sort((a,b)=>b.date.localeCompare(a.date));
+  return `
+  <div class="grid grid-3">
+    <div class="card stat-card stat-red"><div class="label">${L('total_advance_given')}</div><div class="value num" style="font-size:20px;">${fmt(totalGiven)}</div></div>
+    <div class="card stat-card stat-lime"><div class="label">${L('total_advance_repaid')}</div><div class="value num" style="font-size:20px;">${fmt(totalRepaid)}</div></div>
+    <div class="card stat-card stat-amber"><div class="label">${L('total_outstanding')}</div><div class="value num" style="font-size:20px; color:${totalOutstanding>0?'var(--bad)':'var(--ok)'}">${fmt(totalOutstanding)}</div></div>
+  </div>
+  <div class="section-title">
+    <div><h2>${L('employee_advance_balances')}</h2></div>
+    <button class="btn btn-primary btn-sm" data-add-txn-employee-advance="1">+ ${L('add_txn')}</button>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>${L('employee_name_label')}</th><th style="text-align:right;">${L('total_advance_given')}</th><th style="text-align:right;">${L('total_advance_repaid')}</th><th style="text-align:right;">${L('outstanding_balance')}</th></tr></thead>
+      <tbody>
+        ${summary.map(x=>`<tr>
+          <td>${x.name}</td>
+          <td class="amt">${fmt(x.given)}</td>
+          <td class="amt">${fmt(x.repaid)}</td>
+          <td class="amt" style="color:${x.outstanding>0?'var(--bad)':'var(--ok)'}">${fmt(x.outstanding)}</td>
+        </tr>`).join("") || `<tr class="empty-row"><td colspan="4">${L('no_employee_advances')}</td></tr>`}
+      </tbody>
+    </table>
+  </div>
+  <div class="section-title"><div><h2>${L('txn_history')}</h2></div></div>
+  ${transactionsTable(txns)}
+  <p class="hint" style="margin-top:14px;">${L('employee_advance_hint')}</p>
   `;
 }
 
@@ -2150,11 +2217,11 @@ function formTransaction(existing, presets={}){
     projectId: presets.projectId || "", accountType: defaultAccType,
     accountId: presets.accountId || (DB.banks[0]?.id || DB.cash[0]?.id || ""),
     toAccountType:"", toAccountId:"", category:"", desc:"", amount:"", voucherNo:"",
-    method:"cash", chequeNo:"", chequeBankName:"", withdrawnBy:""
+    method:"cash", chequeNo:"", chequeBankName:"", withdrawnBy:"", employeeName:""
   };
   const typesForAccount = (accType)=> accType==='bank'? ['income','withdrawal'] : ['income','expense'];
   const typeChipLabel = (v)=> v==='income'?L('income'): v==='expense'?L('expense'): v==='withdrawal'?L('withdrawal'): L('transfer');
-  const renderCatOptions = (type)=> (DB.categories[type]||[]).map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join("");
+  const renderCatOptions = (type, excludeEmployeeAdvance)=> (DB.categories[type]||[]).filter(c=> !(excludeEmployeeAdvance && c===EMPLOYEE_ADVANCE_CATEGORY)).map(c=>`<option value="${c}" ${t.category===c?'selected':''}>${c}</option>`).join("");
   const bankOpts = (selType,selId)=> DB.banks.map(b=>`<option value="${b.id}" ${selType==='bank'&&selId===b.id?'selected':''}>${b.name}</option>`).join("");
   const cashOpts = (selType,selId)=> DB.cash.map(c=>`<option value="${c.id}" ${selType==='cash'&&selId===c.id?'selected':''}>${c.name}</option>`).join("");
 
@@ -2208,6 +2275,9 @@ function formTransaction(existing, presets={}){
       <div class="field" id="tfVoucherWrap" style="display:none;">
         <label id="tfVoucherLabel">${L('cash_receipt_no_label')}</label><input id="tfVoucherNo" value="${t.voucherNo||''}" placeholder="${L('cash_receipt_no_ph')}">
       </div>
+      <div class="field" id="tfEmployeeNameWrap" style="display:none;">
+        <label>${L('employee_name_label')}</label><input id="tfEmployeeName" value="${t.employeeName||''}" placeholder="${L('employee_name_ph')}">
+      </div>
       <div class="field" id="tfMethodWrap" style="display:none;">
         <label>${L('payment_method')}</label>
         <div class="radio-row">
@@ -2245,6 +2315,7 @@ function formTransaction(existing, presets={}){
     const methodWrap = overlay.querySelector("#tfMethodWrap");
     const inChequeWrap = overlay.querySelector("#tfInChequeWrap");
     const voucherWrap = overlay.querySelector("#tfVoucherWrap");
+    const employeeNameWrap = overlay.querySelector("#tfEmployeeNameWrap");
     const withdrawalNote = overlay.querySelector("#tfWithdrawalNote");
     const typeWrap = overlay.querySelector("#tfTypeWrap");
 
@@ -2325,13 +2396,16 @@ function formTransaction(existing, presets={}){
       const methodEl = overlay.querySelector('input[name="txMethod"]:checked');
       const isCheque = isIncome && methodEl && methodEl.value==='cheque';
       inChequeWrap.style.display = isCheque? 'grid':'none';
+
+      const isEmployeeAdvance = (isIncome || isExpense) && accTypeSel.value==='cash' && catSel.value===EMPLOYEE_ADVANCE_CATEGORY;
+      employeeNameWrap.style.display = isEmployeeAdvance? 'block':'none';
     }
     function refreshCatOptions(){
       if(currentType==='transfer'){
         catWrap.style.display='none'; toWrap.style.display='grid'; projWrap.style.display='none';
       } else if(currentType==='withdrawal'){
         catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
-        catSel.innerHTML = renderCatOptions('expense');
+        catSel.innerHTML = renderCatOptions('expense', true);
         refreshReceiverOptions();
       } else {
         catWrap.style.display='block'; toWrap.style.display='none'; projWrap.style.display='block';
@@ -2352,6 +2426,7 @@ function formTransaction(existing, presets={}){
 
     accTypeSel.onchange = refreshAccOptions;
     toTypeSel.onchange = refreshToOptions;
+    catSel.onchange = refreshChequeVisibility;
 
     overlay.querySelector("#mClose").onclick = closeModal;
     overlay.querySelector("#mCancel").onclick = closeModal;
@@ -2406,6 +2481,9 @@ function formTransaction(existing, presets={}){
         data.chequeNo = ""; data.withdrawnBy = ""; data.method = ""; data.chequeBankName = "";
       }
       if(!data.accountId){ toast(L('toast_select_account')); return; }
+      const isEmployeeAdvanceEntry = (type==='income'||type==='expense') && data.accountType==='cash' && data.category===EMPLOYEE_ADVANCE_CATEGORY;
+      data.employeeName = isEmployeeAdvanceEntry? overlay.querySelector("#tfEmployeeName").value.trim() : "";
+      if(isEmployeeAdvanceEntry && !data.employeeName){ toast(L('toast_employee_name_required')); return; }
       const saveBtn = overlay.querySelector("#tfSave"); saveBtn.disabled = true;
       let error;
       const isEditOfExisting = !!existing;
@@ -2526,6 +2604,9 @@ function bindGlobalEvents(){
   });
   document.querySelectorAll("[data-add-txn-office]").forEach(el=>{
     el.addEventListener("click",()=> formTransaction(null, {}));
+  });
+  document.querySelectorAll("[data-add-txn-employee-advance]").forEach(el=>{
+    el.addEventListener("click",()=> formTransaction(null, {accountType:'cash'}));
   });
   document.querySelectorAll("[data-edit-txn]").forEach(el=>{
     el.addEventListener("click",(e)=>{ e.stopPropagation(); const t = DB.transactions.find(x=>x.id===el.dataset.editTxn); formTransaction(t); });
