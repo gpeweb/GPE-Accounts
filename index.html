@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="bn">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -298,8 +298,9 @@ tbody tr:hover{background:#fafcfb;}
 <script>
 /* ======================================================================
    GENERAL POWER ENGINEERING LTD — Accounting App
-   Single-file app. Data persists to localStorage (fallback: in-memory)
-   with JSON export/import for backup, and one-click Excel report export.
+   Single-file app. Data lives in a shared Supabase (Postgres) database,
+   with real-time sync across everyone logged in, plus a one-click Excel
+   report export.
    ====================================================================== */
 
 const LOGO_SVG = `<svg viewBox="0 0 415 315" xmlns="http://www.w3.org/2000/svg">
@@ -322,383 +323,360 @@ function getLogoHtml(){
 const CURRENCY = "৳";
 const uid = (p="id") => p + "_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
 
-/* ---------------- Language ---------------- */
-const LANG_KEY = "gpe_accounts_lang";
-let LANG = "en";
-
 const DICT = {
-  app_title:{bn:"হিসাব ব্যবস্থাপনা", en:"Accounts Management"},
-  nav_group_summary:{bn:"সারসংক্ষেপ", en:"OVERVIEW"},
-  nav_group_accounts:{bn:"হিসাব", en:"ACCOUNTS"},
-  nav_group_other:{bn:"অন্যান্য", en:"OTHER"},
-  nav_dashboard:{bn:"ড্যাশবোর্ড", en:"Dashboard"},
-  nav_projects:{bn:"প্রজেক্ট সমূহ", en:"Projects"},
-  nav_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
-  nav_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
-  nav_transactions:{bn:"সকল লেনদেন", en:"All Transactions"},
-  nav_reports:{bn:"রিপোর্ট", en:"Reports"},
-  nav_profit:{bn:"লাভ", en:"Profit"},
-  total_profit_projects:{bn:"প্রজেক্ট থেকে মোট লাভ", en:"Total Profit from Projects"},
-  company_profit:{bn:"কোম্পানির লাভ", en:"Company Profit"},
-  shareholders_profit:{bn:"শেয়ারহোল্ডারদের লাভ", en:"Shareholders Profit"},
-  done_projects_profit_breakdown:{bn:"সম্পন্ন প্রজেক্টের লাভের বিবরণ", en:"Completed Projects' Profit Breakdown"},
-  company_profit_breakdown:{bn:"কোম্পানির লাভ — প্রজেক্ট অনুযায়ী", en:"Company Profit — By Project"},
-  shareholders_profit_breakdown:{bn:"শেয়ারহোল্ডারদের লাভ — প্রজেক্ট অনুযায়ী", en:"Shareholders Profit — By Project"},
-  add_shareholder_btn:{bn:"শেয়ারহোল্ডার যোগ করুন", en:"Add Shareholder"},
-  edit_shareholder_title:{bn:"শেয়ারহোল্ডার সম্পাদনা", en:"Edit Shareholder"},
-  shareholder_name_label:{bn:"নাম", en:"Name"},
-  shareholder_nid_label:{bn:"এনআইডি নম্বর", en:"NID Number"},
-  shareholder_nid_ph:{bn:"জাতীয় পরিচয়পত্র নম্বর", en:"National ID card number"},
-  shareholder_percent_label:{bn:"শেয়ারের শতাংশ (%)", en:"Share Percentage (%)"},
-  shareholder_nid_privacy_note:{bn:"⚠️ এটি স্পর্শকাতর তথ্য — শুধু অ্যাডমিন এই তথ্য দেখতে/পরিবর্তন করতে পারবেন এমনটা নিশ্চিত করুন।", en:"⚠️ This is sensitive information — make sure only trusted admins have access to it."},
-  toast_invalid_percent:{bn:"শতাংশ ০ থেকে ১০০ এর মধ্যে হতে হবে", en:"Percentage must be between 0 and 100"},
-  toast_shareholder_saved:{bn:"শেয়ারহোল্ডার সংরক্ষিত হয়েছে", en:"Shareholder saved"},
-  toast_shareholder_deleted:{bn:"শেয়ারহোল্ডার মুছে ফেলা হয়েছে", en:"Shareholder deleted"},
-  confirm_del_shareholder:{bn:"এই শেয়ারহোল্ডারকে মুছে ফেলবেন?", en:"Delete this shareholder?"},
-  shareholders_list:{bn:"শেয়ারহোল্ডার তালিকা", en:"Shareholders List"},
-  no_shareholders_yet:{bn:"এখনো কোনো শেয়ারহোল্ডার যোগ করা হয়নি", en:"No shareholders added yet"},
-  total_share_percent_note:{bn:"মোট শেয়ার: {p}% (১০০% হওয়া উচিত)", en:"Total share allocated: {p}% (should equal 100%)"},
-  no_done_projects:{bn:"এখনো কোনো প্রজেক্ট সম্পন্ন (Done) হয়নি", en:"No projects marked Done yet"},
-  profit_display_only_note:{bn:"⚠️ এই পেজটি শুধু তথ্য দেখানোর জন্য — এখানে কোনো কিছুই কোনো ব্যাংক বা ক্যাশ হিসাবের ব্যালেন্স পরিবর্তন করে না।", en:"⚠️ This page is for display only — nothing here changes any bank or cash account balance."},
-  nav_settings:{bn:"সেটিংস", en:"Settings"},
-  sidebar_foot:{bn:"লোকাল ডেটা এই ব্রাউজারে সংরক্ষিত", en:"Data is stored locally in this browser"},
+  nav_group_summary:"OVERVIEW",
+  nav_group_accounts:"ACCOUNTS",
+  nav_group_other:"OTHER",
+  nav_dashboard:"Dashboard",
+  nav_projects:"Projects",
+  nav_banks:"Bank Accounts",
+  nav_cash:"Cash Accounts",
+  nav_transactions:"All Transactions",
+  nav_reports:"Reports",
+  nav_profit:"Profit",
+  total_profit_projects:"Total Profit from Projects",
+  company_profit:"Company Profit",
+  shareholders_profit:"Shareholders Profit",
+  done_projects_profit_breakdown:"Completed Projects' Profit Breakdown",
+  company_profit_breakdown:"Company Profit — By Project",
+  shareholders_profit_breakdown:"Shareholders Profit — By Project",
+  add_shareholder_btn:"Add Shareholder",
+  edit_shareholder_title:"Edit Shareholder",
+  shareholder_name_label:"Name",
+  shareholder_nid_label:"NID Number",
+  shareholder_nid_ph:"National ID card number",
+  shareholder_percent_label:"Share Percentage (%)",
+  shareholder_nid_privacy_note:"⚠️ This is sensitive information — make sure only trusted admins have access to it.",
+  toast_invalid_percent:"Percentage must be between 0 and 100",
+  toast_shareholder_saved:"Shareholder saved",
+  toast_shareholder_deleted:"Shareholder deleted",
+  confirm_del_shareholder:"Delete this shareholder?",
+  shareholders_list:"Shareholders List",
+  no_shareholders_yet:"No shareholders added yet",
+  total_share_percent_note:"Total share allocated: {p}% (should equal 100%)",
+  no_done_projects:"No projects marked Done yet",
+  profit_display_only_note:"⚠️ This page is for display only — nothing here changes any bank or cash account balance.",
+  nav_settings:"Settings",
+  sidebar_foot:"Data is stored locally in this browser",
 
-  title_dashboard:{bn:"ড্যাশবোর্ড", en:"Dashboard"},
-  sub_dashboard:{bn:"সার্বিক ব্যবসায়িক অবস্থার এক নজরে", en:"An overview of your overall business position"},
-  title_projects:{bn:"প্রজেক্ট সমূহ", en:"Projects"},
-  sub_projects:{bn:"প্রতিটি প্রজেক্টের পৃথক হিসাব", en:"Separate accounts for every project"},
-  title_projectDetail:{bn:"প্রজেক্ট বিবরণ", en:"Project Details"},
-  title_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
-  sub_banks:{bn:"সকল ব্যাংক অ্যাকাউন্ট ও তার ব্যালেন্স", en:"All bank accounts and their balances"},
-  title_bankDetail:{bn:"ব্যাংক হিসাব বিবরণ", en:"Bank Account Details"},
-  title_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
-  sub_cash:{bn:"হাতে নগদ টাকার হিসাব", en:"Accounts for cash on hand"},
-  title_cashDetail:{bn:"ক্যাশ হিসাব বিবরণ", en:"Cash Account Details"},
-  title_transactions:{bn:"সকল লেনদেন", en:"All Transactions"},
-  sub_transactions:{bn:"প্রতিটি আয়-ব্যয় খুঁজুন ও ফিল্টার করুন", en:"Find and filter every income and expense"},
-  title_reports:{bn:"রিপোর্ট", en:"Reports"},
-  sub_reports:{bn:"প্রজেক্ট ও সময়ভিত্তিক সারাংশ", en:"Project-wise and period-wise summaries"},
-  title_settings:{bn:"সেটিংস", en:"Settings"},
-  sub_settings:{bn:"ক্যাটাগরি ও কোম্পানির তথ্য", en:"Categories and company information"},
+  title_dashboard:"Dashboard",
+  sub_dashboard:"An overview of your overall business position",
+  title_projects:"Projects",
+  sub_projects:"Separate accounts for every project",
+  title_projectDetail:"Project Details",
+  title_banks:"Bank Accounts",
+  sub_banks:"All bank accounts and their balances",
+  title_bankDetail:"Bank Account Details",
+  title_cash:"Cash Accounts",
+  sub_cash:"Accounts for cash on hand",
+  title_cashDetail:"Cash Account Details",
+  title_transactions:"All Transactions",
+  sub_transactions:"Find and filter every income and expense",
+  title_reports:"Reports",
+  sub_reports:"Project-wise and period-wise summaries",
+  title_settings:"Settings",
+  sub_settings:"Categories and company information",
 
-  btn_backup_export:{bn:"ব্যাকআপ এক্সপোর্ট", en:"Export Backup"},
-  btn_import:{bn:"ইম্পোর্ট", en:"Import"},
-  btn_new_txn:{bn:"নতুন লেনদেন", en:"New Transaction"},
-  btn_excel_export:{bn:"এক্সেল রিপোর্ট", en:"Excel Report"},
+  btn_backup_export:"Export Backup",
+  btn_new_txn:"New Transaction",
+  btn_excel_export:"Excel Report",
 
-  total_income:{bn:"মোট আয়", en:"Total Income"},
-  total_expense:{bn:"মোট খরচ", en:"Total Expense"},
-  net_profit:{bn:"নীট মুনাফা", en:"Net Profit"},
-  total_cash_bank:{bn:"মোট নগদ + ব্যাংক", en:"Total Cash + Bank"},
-  across_all:{bn:"সকল প্রজেক্ট ও উৎস মিলিয়ে", en:"Across all projects and sources"},
-  income_minus_expense:{bn:"আয় − খরচ", en:"Income − Expense"},
-  bank_label:{bn:"ব্যাংক", en:"Bank"},
-  cash_label:{bn:"ক্যাশ", en:"Cash"},
-  eyebrow_active:{bn:"সক্রিয় কাজ", en:"ACTIVE WORK"},
-  project_summary:{bn:"প্রজেক্ট সারাংশ", en:"Project Summary"},
-  view_all:{bn:"সব দেখুন →", en:"View all →"},
-  eyebrow_recent:{bn:"সাম্প্রতিক", en:"RECENT"},
-  latest_txns:{bn:"সর্বশেষ লেনদেন", en:"Latest Transactions"},
+  total_income:"Total Income",
+  total_expense:"Total Expense",
+  net_profit:"Net Profit",
+  total_cash_bank:"Total Cash + Bank",
+  across_all:"Across all projects and sources",
+  income_minus_expense:"Income − Expense",
+  bank_label:"Bank",
+  cash_label:"Cash",
+  eyebrow_active:"ACTIVE WORK",
+  project_summary:"Project Summary",
+  view_all:"View all →",
+  eyebrow_recent:"RECENT",
+  latest_txns:"Latest Transactions",
 
-  income:{bn:"আয়", en:"Income"},
-  expense:{bn:"খরচ", en:"Expense"},
-  transfer:{bn:"স্থানান্তর", en:"Transfer"},
-  withdrawal:{bn:"উত্তোলন", en:"Withdrawal"},
-  tag_withdrawal:{bn:"উত্তোলন", en:"Withdrawal"},
-  cash_receipt_no_label:{bn:"নগদ প্রাপ্তি রশিদ নম্বর", en:"Cash Receipt Number"},
-  cash_receipt_no_ph:{bn:"যেমন: CR-00124", en:"e.g. CR-00124"},
-  cash_receipt_no_short:{bn:"রশিদ", en:"Receipt"},
-  withdrawal_note:{bn:"ব্যাংক থেকে উত্তোলন — কোনো গন্তব্য হিসাব লাগবে না, শুধু চেক নম্বর ও কে উত্তোলন করেছে তার নাম", en:"A withdrawal from the bank — no destination account needed, just the cheque number and who withdrew it"},
-  net:{bn:"নীট", en:"Net"},
-  status_running:{bn:"চলমান", en:"Running"},
-  status_done:{bn:"সম্পন্ন", en:"Done"},
-  status_hold:{bn:"স্থগিত", en:"On Hold"},
-  budget_progress:{bn:"বাজেট {b} এর মধ্যে {p}% আদায়", en:"{p}% collected of {b} budget"},
+  income:"Income",
+  expense:"Expense",
+  transfer:"Transfer",
+  withdrawal:"Withdrawal",
+  cash_receipt_no_label:"Cash Receipt Number",
+  cash_receipt_no_ph:"e.g. CR-00124",
+  cash_receipt_no_short:"Receipt",
+  withdrawal_note:"A withdrawal from the bank — no destination account needed, just the cheque number and who withdrew it",
+  net:"Net",
+  status_running:"Running",
+  status_done:"Done",
+  status_hold:"On Hold",
+  budget_progress:"{p}% collected of {b} budget",
 
-  no_projects_yet:{bn:"এখনো কোনো প্রজেক্ট যোগ করা হয়নি", en:"No projects added yet"},
-  search_project_ph:{bn:"কোড বা নাম দিয়ে খুঁজুন (যেমন GPE-0007)...", en:"Search by code or name (e.g. GPE-0007)..."},
-  no_project_match:{bn:"কোনো প্রজেক্ট মেলেনি", en:"No matching project found"},
-  no_bank_yet:{bn:"এখনো কোনো ব্যাংক হিসাব যোগ করা হয়নি", en:"No bank account added yet"},
-  no_cash_yet:{bn:"এখনো কোনো ক্যাশ হিসাব যোগ করা হয়নি", en:"No cash account added yet"},
-  no_txns_found:{bn:"কোনো লেনদেন পাওয়া যায়নি", en:"No transactions found"},
+  no_projects_yet:"No projects added yet",
+  search_project_ph:"Search by code or name (e.g. GPE-0007)...",
+  no_project_match:"No matching project found",
+  no_bank_yet:"No bank account added yet",
+  no_cash_yet:"No cash account added yet",
+  no_txns_found:"No transactions found",
 
-  col_date:{bn:"তারিখ", en:"Date"},
-  col_type:{bn:"ধরণ", en:"Type"},
-  col_project:{bn:"প্রজেক্ট", en:"Project"},
-  col_project_code:{bn:"প্রজেক্ট কোড", en:"Project Code"},
-  col_account:{bn:"হিসাব", en:"Account"},
-  col_category:{bn:"খাত", en:"Category"},
-  col_description:{bn:"বিবরণ", en:"Description"},
-  col_voucher_no:{bn:"ভাউচার নম্বর", en:"Voucher No."},
-  col_amount:{bn:"পরিমাণ", en:"Amount"},
-  col_client:{bn:"ক্লায়েন্ট", en:"Client"},
-  col_status:{bn:"অবস্থা", en:"Status"},
-  col_budget:{bn:"বাজেট", en:"Budget"},
-  col_account_name:{bn:"হিসাবের নাম", en:"Account Name"},
-  col_bank_name:{bn:"ব্যাংকের নাম", en:"Bank Name"},
-  col_branch:{bn:"শাখা", en:"Branch"},
-  col_acc_no:{bn:"হিসাব নম্বর", en:"Account No."},
-  col_opening:{bn:"প্রারম্ভিক", en:"Opening"},
-  col_current_balance:{bn:"বর্তমান ব্যালেন্স", en:"Current Balance"},
+  col_date:"Date",
+  col_type:"Type",
+  col_project:"Project",
+  col_project_code:"Project Code",
+  col_account:"Account",
+  col_category:"Category",
+  col_description:"Description",
+  col_voucher_no:"Voucher No.",
+  col_amount:"Amount",
+  col_client:"Client",
+  col_status:"Status",
+  col_budget:"Budget",
+  col_account_name:"Account Name",
+  col_bank_name:"Bank Name",
+  col_branch:"Branch",
+  col_acc_no:"Account No.",
+  col_opening:"Opening",
+  col_current_balance:"Current Balance",
 
-  new_project:{bn:"নতুন প্রজেক্ট", en:"New Project"},
-  project_not_found:{bn:"প্রজেক্ট খুঁজে পাওয়া যায়নি", en:"Project not found"},
-  client_label:{bn:"ক্লায়েন্ট", en:"Client"},
-  start_label:{bn:"শুরু", en:"Start"},
-  budget_label:{bn:"বাজেট", en:"Budget"},
-  edit:{bn:"সম্পাদনা", en:"Edit"},
-  delete:{bn:"মুছুন", en:"Delete"},
-  this_project_txns:{bn:"এই প্রজেক্টের লেনদেন", en:"This Project's Transactions"},
-  add_txn:{bn:"লেনদেন যোগ করুন", en:"Add Transaction"},
+  new_project:"New Project",
+  project_not_found:"Project not found",
+  client_label:"Client",
+  start_label:"Start",
+  budget_label:"Budget",
+  edit:"Edit",
+  delete:"Delete",
+  this_project_txns:"This Project's Transactions",
+  add_txn:"Add Transaction",
 
-  new_bank_account:{bn:"নতুন ব্যাংক হিসাব", en:"New Bank Account"},
-  new_cash_account:{bn:"নতুন ক্যাশ হিসাব", en:"New Cash Account"},
-  cash_fund:{bn:"নগদ তহবিল", en:"Cash Fund"},
-  account_no_short:{bn:"হিসাব নং", en:"A/C No."},
-  current_balance:{bn:"বর্তমান ব্যালেন্স", en:"Current Balance"},
-  account_not_found:{bn:"হিসাব খুঁজে পাওয়া যায়নি", en:"Account not found"},
-  opening_balance:{bn:"প্রারম্ভিক ব্যালেন্স", en:"Opening Balance"},
-  txn_history:{bn:"লেনদেনের ইতিহাস", en:"Transaction History"},
+  new_bank_account:"New Bank Account",
+  new_cash_account:"New Cash Account",
+  cash_fund:"Cash Fund",
+  account_no_short:"A/C No.",
+  current_balance:"Current Balance",
+  account_not_found:"Account not found",
+  opening_balance:"Opening Balance",
+  txn_history:"Transaction History",
 
-  all_types:{bn:"সকল ধরণ", en:"All Types"},
-  all_projects:{bn:"সকল প্রজেক্ট", en:"All Projects"},
-  general_company:{bn:"অফিস খরচ", en:"Office Expense"},
-  office_expense_card_hint:{bn:"প্রজেক্ট ছাড়া সব খরচ এখানে জমা হয় — ক্লিক করে বিস্তারিত দেখুন", en:"All non-project expenses land here — click to see details"},
-  nav_employee_advance:{bn:"কর্মচারী অগ্রিম", en:"Employee Advance"},
-  employee_advance_page_hint:{bn:"ক্যাশ থেকে কর্মচারীদের অগ্রিম প্রদান ও ফেরতের হিসাব", en:"Track cash advances given to employees and their repayments"},
-  employee_name_label:{bn:"কর্মচারীর নাম", en:"Employee Name"},
-  employee_name_ph:{bn:"কর্মচারীর নাম লিখুন", en:"Enter employee's name"},
-  toast_employee_name_required:{bn:"কর্মচারীর নাম আবশ্যক", en:"Employee name is required"},
-  total_advance_given:{bn:"মোট প্রদত্ত অগ্রিম", en:"Total Advance Given"},
-  total_advance_repaid:{bn:"মোট ফেরত পাওয়া", en:"Total Repaid"},
-  total_outstanding:{bn:"মোট বকেয়া", en:"Total Outstanding"},
-  employee_advance_balances:{bn:"কর্মচারী অনুযায়ী হিসাব", en:"Balances By Employee"},
-  outstanding_balance:{bn:"বকেয়া", en:"Outstanding"},
-  no_employee_advances:{bn:"এখনো কোনো অগ্রিম এন্ট্রি নেই", en:"No advance entries yet"},
-  employee_advance_hint:{bn:"অগ্রিম দেওয়ার সময় Expense + 'Employee Advance' ক্যাটাগরি বেছে নিন; ফেরত পেলে Income + একই ক্যাটাগরি বেছে নিন — এটা শুধু ক্যাশ হিসাবের জন্য প্রযোজ্য।", en:"When giving an advance, pick Expense + the 'Employee Advance' category; when it's repaid, pick Income + the same category — this only applies to cash accounts."},
-  all_accounts:{bn:"সকল হিসাব", en:"All Accounts"},
-  search_placeholder:{bn:"খুঁজুন...", en:"Search..."},
-  reset:{bn:"রিসেট", en:"Reset"},
-  filtered_income:{bn:"ফিল্টারকৃত আয়", en:"Filtered Income"},
-  filtered_expense:{bn:"ফিল্টারকৃত খরচ", en:"Filtered Expense"},
+  all_types:"All Types",
+  all_projects:"All Projects",
+  general_company:"Office Expense",
+  office_expense_card_hint:"All non-project expenses land here — click to see details",
+  nav_employee_advance:"Employee Advance",
+  employee_advance_page_hint:"Track cash advances given to employees and their repayments",
+  employee_name_label:"Employee Name",
+  employee_name_ph:"Enter employee's name",
+  toast_employee_name_required:"Employee name is required",
+  total_advance_given:"Total Advance Given",
+  total_advance_repaid:"Total Repaid",
+  total_outstanding:"Total Outstanding",
+  employee_advance_balances:"Balances By Employee",
+  outstanding_balance:"Outstanding",
+  no_employee_advances:"No advance entries yet",
+  employee_advance_hint:"When giving an advance, pick Expense + the 'Employee Advance' category; when it's repaid, pick Income + the same category — this only applies to cash accounts.",
+  all_accounts:"All Accounts",
+  search_placeholder:"Search...",
+  reset:"Reset",
+  filtered_income:"Filtered Income",
+  filtered_expense:"Filtered Expense",
 
-  total_income_alltime:{bn:"মোট আয় (সর্বকালের)", en:"Total Income (All-time)"},
-  total_expense_alltime:{bn:"মোট খরচ (সর্বকালের)", en:"Total Expense (All-time)"},
-  project_financial_summary:{bn:"প্রজেক্টভিত্তিক আর্থিক সারাংশ", en:"Project-wise Financial Summary"},
-  print:{bn:"প্রিন্ট করুন", en:"Print"},
-  no_projects:{bn:"কোনো প্রজেক্ট নেই", en:"No projects"},
-  account_wise_balance:{bn:"হিসাবভিত্তিক ব্যালেন্স", en:"Account-wise Balance"},
-  category_expense_analysis:{bn:"খাতভিত্তিক ব্যয় বিশ্লেষণ", en:"Category-wise Expense Analysis"},
-  no_expense_found:{bn:"কোনো খরচ পাওয়া যায়নি", en:"No expenses found"},
-  other_category:{bn:"অন্যান্য", en:"Other"},
+  total_income_alltime:"Total Income (All-time)",
+  total_expense_alltime:"Total Expense (All-time)",
+  project_financial_summary:"Project-wise Financial Summary",
+  print:"Print",
+  no_projects:"No projects",
+  account_wise_balance:"Account-wise Balance",
+  category_expense_analysis:"Category-wise Expense Analysis",
+  no_expense_found:"No expenses found",
+  other_category:"Other",
 
-  company_info:{bn:"কোম্পানির তথ্য", en:"Company Information"},
-  company_name:{bn:"কোম্পানির নাম", en:"Company Name"},
-  tagline:{bn:"ট্যাগলাইন", en:"Tagline"},
-  logo_label:{bn:"লোগো", en:"Logo"},
-  change_logo:{bn:"লোগো পরিবর্তন করুন", en:"Change Logo"},
-  reset_default_logo:{bn:"ডিফল্ট লোগোতে ফিরে যান", en:"Reset to default logo"},
-  logo_hint:{bn:"PNG, JPG বা SVG ছবি আপলোড করুন (সর্বোচ্চ ২ এমবি)", en:"Upload a PNG, JPG, or SVG image (max 2MB)"},
-  save:{bn:"সংরক্ষণ করুন", en:"Save"},
-  data_management:{bn:"ডেটা ব্যবস্থাপনা", en:"Data Management"},
-  data_mgmt_hint:{bn:"সকল তথ্য এখন কেন্দ্রীয়ভাবে ক্লাউড ডাটাবেজে (Supabase) সংরক্ষিত থাকে — যেকোনো ডিভাইস থেকে লগইন করলে একই ডেটা দেখা যাবে। তারপরও মাঝেমধ্যে এক্সেল/ব্যাকআপ রাখা ভালো অভ্যাস।", en:"All data is now stored centrally in a cloud database (Supabase) — logging in from any device shows the same shared data. Still, keeping periodic Excel/backup snapshots is a good habit."},
-  delete_all_data:{bn:"সব ডেটা মুছে ফেলুন", en:"Delete All Data"},
-  no_localstorage_warn:{bn:"⚠️ এই ব্রাউজারে লোকাল স্টোরেজ সক্রিয় নয় — পেজ রিফ্রেশ করলে ডেটা হারিয়ে যেতে পারে। ব্যবহারের পর অবশ্যই এক্সপোর্ট করে ব্যাকআপ রাখুন।", en:"⚠️ Local storage is not available in this browser — data may be lost on refresh. Please export a backup after use."},
-  income_categories:{bn:"আয়ের ক্যাটাগরি", en:"Income Categories"},
-  expense_categories:{bn:"খরচের ক্যাটাগরি", en:"Expense Categories"},
-  new_category:{bn:"নতুন ক্যাটাগরি", en:"New category"},
-  add:{bn:"যোগ করুন", en:"Add"},
-  no_categories:{bn:"কোনো ক্যাটাগরি নেই", en:"No categories"},
-  language_label:{bn:"ভাষা", en:"Language"},
+  company_info:"Company Information",
+  company_name:"Company Name",
+  tagline:"Tagline",
+  logo_label:"Logo",
+  change_logo:"Change Logo",
+  reset_default_logo:"Reset to default logo",
+  logo_hint:"Upload a PNG, JPG, or SVG image (max 2MB)",
+  save:"Save",
+  data_management:"Data Management",
+  data_mgmt_hint:"All data is now stored centrally in a cloud database (Supabase) — logging in from any device shows the same shared data. Still, keeping periodic Excel/backup snapshots is a good habit.",
+  delete_all_data:"Delete All Data",
+  income_categories:"Income Categories",
+  expense_categories:"Expense Categories",
+  new_category:"New category",
+  add:"Add",
+  no_categories:"No categories",
 
-  edit_project:{bn:"প্রজেক্ট সম্পাদনা", en:"Edit Project"},
-  project_name_req:{bn:"প্রজেক্টের নাম *", en:"Project Name *"},
-  project_name_ph:{bn:"যেমন: ১১/০.৪ কেভি সাব-স্টেশন নির্মাণ", en:"e.g. 11/0.4kV Substation Construction"},
-  client_authority:{bn:"ক্লায়েন্ট / কর্তৃপক্ষ", en:"Client / Authority"},
-  start_date:{bn:"শুরুর তারিখ", en:"Start Date"},
-  budget_bdt:{bn:"বাজেট (৳)", en:"Budget (৳)"},
-  status_label:{bn:"অবস্থা", en:"Status"},
-  notes:{bn:"নোট", en:"Notes"},
-  cancel:{bn:"বাতিল", en:"Cancel"},
+  edit_project:"Edit Project",
+  project_name_req:"Project Name *",
+  project_name_ph:"e.g. 11/0.4kV Substation Construction",
+  client_authority:"Client / Authority",
+  start_date:"Start Date",
+  budget_bdt:"Budget (৳)",
+  status_label:"Status",
+  notes:"Notes",
+  cancel:"Cancel",
 
-  edit_account:{bn:"হিসাব সম্পাদনা", en:"Edit Account"},
-  account_name_req:{bn:"হিসাবের নাম *", en:"Account Name *"},
-  account_name_ph_bank:{bn:"যেমন: প্রধান হিসাব", en:"e.g. Main Account"},
-  account_name_ph_cash:{bn:"যেমন: অফিস ক্যাশ", en:"e.g. Office Cash"},
-  bank_name_label:{bn:"ব্যাংকের নাম", en:"Bank Name"},
-  branch_label:{bn:"শাখা", en:"Branch"},
-  acc_no_label:{bn:"হিসাব নম্বর", en:"Account Number"},
-  opening_balance_bdt:{bn:"প্রারম্ভিক ব্যালেন্স (৳)", en:"Opening Balance (৳)"},
+  edit_account:"Edit Account",
+  account_name_req:"Account Name *",
+  account_name_ph_bank:"e.g. Main Account",
+  account_name_ph_cash:"e.g. Office Cash",
+  bank_name_label:"Bank Name",
+  branch_label:"Branch",
+  acc_no_label:"Account Number",
+  opening_balance_bdt:"Opening Balance (৳)",
 
-  new_transaction:{bn:"নতুন লেনদেন", en:"New Transaction"},
-  edit_transaction:{bn:"লেনদেন সম্পাদনা", en:"Edit Transaction"},
-  type_label:{bn:"ধরণ", en:"Type"},
-  date_label:{bn:"তারিখ", en:"Date"},
-  amount_bdt_req:{bn:"পরিমাণ (৳) *", en:"Amount (৳) *"},
-  project_optional:{bn:"প্রজেক্ট (ঐচ্ছিক — না দিলে সাধারণ কোম্পানি খরচ ধরা হবে)", en:"Project (optional — if left blank, this counts as a general company expense)"},
-  receiver_label:{bn:"প্রাপক", en:"Receiver"},
-  account_from_to:{bn:"হিসাব থেকে/এ", en:"Account (From/To)"},
-  recipient_acc_type:{bn:"প্রাপক হিসাবের ধরণ", en:"Recipient Account Type"},
-  recipient_account:{bn:"প্রাপক হিসাব", en:"Recipient Account"},
-  category_label:{bn:"খাত", en:"Category"},
-  description_label:{bn:"বিবরণ", en:"Description"},
-  description_ph:{bn:"সংক্ষিপ্ত বিবরণ লিখুন", en:"Write a short description"},
-  voucher_no_label:{bn:"ভাউচার নম্বর (CPV/CRV)", en:"Voucher No. (CPV/CRV)"},
-  voucher_no_ph:{bn:"যেমন: CPV-00124", en:"e.g. CPV-00124"},
-  voucher_no_short:{bn:"ভাউচার", en:"Voucher"},
-  payment_method:{bn:"পরিশোধের ধরণ", en:"Payment Method"},
-  cash_method:{bn:"নগদ", en:"Cash"},
-  cheque_method:{bn:"চেক", en:"Cheque"},
-  bank_transfer_method:{bn:"ব্যাংক টু ব্যাংক", en:"Bank to Bank"},
-  cheque_no_label:{bn:"চেক নম্বর", en:"Cheque No."},
-  cheque_no_ph:{bn:"যেমন: 0021458", en:"e.g. 0021458"},
-  cheque_bank_name_label:{bn:"চেকের ব্যাংকের নাম", en:"Cheque's Bank Name"},
-  cheque_bank_name_ph:{bn:"যেমন: সোনালী ব্যাংক", en:"e.g. Sonali Bank"},
-  withdrawal_cheque_no_label:{bn:"চেক নম্বর (ঐচ্ছিক)", en:"Cheque No. (optional)"},
-  withdrawn_by_label:{bn:"কে উত্তোলন করেছেন (ঐচ্ছিক)", en:"Withdrawn By (optional)"},
-  withdrawn_by_ph:{bn:"ব্যক্তির নাম লিখুন", en:"Enter the person's name"},
-  cheque_no_short:{bn:"চেক নং", en:"Cheque No."},
-  cheque_bank_short:{bn:"চেকের ব্যাংক", en:"Cheque Bank"},
-  withdrawn_by_short:{bn:"উত্তোলনকারী", en:"Withdrawn By"},
-  col_method:{bn:"পরিশোধের ধরণ", en:"Payment Method"},
-  col_cheque_no:{bn:"চেক নম্বর", en:"Cheque No."},
-  col_cheque_bank:{bn:"চেকের ব্যাংক", en:"Cheque Bank"},
-  col_withdrawn_by:{bn:"উত্তোলনকারীর নাম", en:"Withdrawn By"},
-  menu_toggle_label:{bn:"মেনু", en:"Menu"},
+  new_transaction:"New Transaction",
+  edit_transaction:"Edit Transaction",
+  type_label:"Type",
+  date_label:"Date",
+  amount_bdt_req:"Amount (৳) *",
+  project_optional:"Project (optional — if left blank, this counts as a general company expense)",
+  receiver_label:"Receiver",
+  account_from_to:"Account (From/To)",
+  recipient_acc_type:"Recipient Account Type",
+  recipient_account:"Recipient Account",
+  category_label:"Category",
+  description_label:"Description",
+  description_ph:"Write a short description",
+  voucher_no_label:"Voucher No. (CPV/CRV)",
+  voucher_no_ph:"e.g. CPV-00124",
+  voucher_no_short:"Voucher",
+  payment_method:"Payment Method",
+  cash_method:"Cash",
+  cheque_method:"Cheque",
+  bank_transfer_method:"Bank to Bank",
+  cheque_no_label:"Cheque No.",
+  cheque_no_ph:"e.g. 0021458",
+  cheque_bank_name_label:"Cheque's Bank Name",
+  cheque_bank_name_ph:"e.g. Sonali Bank",
+  withdrawal_cheque_no_label:"Cheque No. (optional)",
+  withdrawn_by_label:"Withdrawn By (optional)",
+  withdrawn_by_ph:"Enter the person's name",
+  cheque_no_short:"Cheque No.",
+  cheque_bank_short:"Cheque Bank",
+  withdrawn_by_short:"Withdrawn By",
+  col_method:"Payment Method",
+  col_cheque_no:"Cheque No.",
+  col_cheque_bank:"Cheque Bank",
+  col_withdrawn_by:"Withdrawn By",
+  menu_toggle_label:"Menu",
 
-  toast_name_required:{bn:"নাম আবশ্যক", en:"Name is required"},
-  toast_project_name_required:{bn:"প্রজেক্টের নাম আবশ্যক", en:"Project name is required"},
-  toast_project_saved:{bn:"প্রজেক্ট সংরক্ষিত হয়েছে", en:"Project saved"},
-  toast_account_saved:{bn:"হিসাব সংরক্ষিত হয়েছে", en:"Account saved"},
-  toast_valid_amount:{bn:"সঠিক পরিমাণ লিখুন", en:"Please enter a valid amount"},
-  toast_same_account_transfer:{bn:"একই হিসাবে স্থানান্তর সম্ভব নয়", en:"Cannot transfer to the same account"},
-  toast_select_account:{bn:"একটি হিসাব নির্বাচন করুন", en:"Please select an account"},
-  toast_txn_saved:{bn:"লেনদেন সংরক্ষিত হয়েছে", en:"Transaction saved"},
-  pending_edit_tag:{bn:"সম্পাদনা অনুমোদনের অপেক্ষায়", en:"Edit pending approval"},
-  edited_tag:{bn:"সম্পাদিত", en:"Edited"},
-  approved_by_short:{bn:"অনুমোদনকারী", en:"Approved by"},
-  approve_btn:{bn:"অনুমোদন করুন", en:"Approve"},
-  reject_btn:{bn:"বাতিল করুন", en:"Reject"},
-  non_admin_edit_note:{bn:"⚠️ আপনার করা পরিবর্তন সাথে সাথে প্রয়োগ হবে না — একজন অ্যাডমিনের অনুমোদনের অপেক্ষায় থাকবে।", en:"⚠️ Your change won't apply immediately — it will wait for an admin's approval."},
-  overwrite_pending_note:{bn:"⚠️ এই এন্ট্রিতে ইতিমধ্যে একটা সম্পাদনা অনুমোদনের অপেক্ষায় আছে। এখন জমা দিলে আগের প্রস্তাবটি প্রতিস্থাপিত হবে।", en:"⚠️ This entry already has an edit pending approval. Submitting now will replace that earlier proposal."},
-  toast_edit_submitted:{bn:"সম্পাদনা জমা হয়েছে — অ্যাডমিনের অনুমোদনের অপেক্ষায়", en:"Edit submitted — awaiting admin approval"},
-  toast_edit_approved:{bn:"সম্পাদনা অনুমোদন করা হয়েছে", en:"Edit approved"},
-  toast_edit_rejected:{bn:"সম্পাদনা বাতিল করা হয়েছে", en:"Edit rejected"},
-  confirm_reject_edit:{bn:"এই প্রস্তাবিত সম্পাদনা বাতিল করবেন? মূল তথ্য অপরিবর্তিত থাকবে।", en:"Reject this proposed edit? The original data will remain unchanged."},
-  confirm_del_project:{bn:"এই প্রজেক্ট ও এর সকল লেনদেন মুছে ফেলা হবে। নিশ্চিত?", en:"This project and all its transactions will be deleted. Are you sure?"},
-  toast_project_deleted:{bn:"প্রজেক্ট মুছে ফেলা হয়েছে", en:"Project deleted"},
-  confirm_del_account:{bn:"এই হিসাব মুছে ফেলা হবে (লেনদেনগুলো থেকে যাবে তবে অসংযুক্ত হয়ে যাবে)। নিশ্চিত?", en:"This account will be deleted (its transactions will remain but become unlinked). Are you sure?"},
-  toast_account_deleted:{bn:"হিসাব মুছে ফেলা হয়েছে", en:"Account deleted"},
-  confirm_del_txn:{bn:"এই লেনদেনটি মুছে ফেলবেন?", en:"Delete this transaction?"},
-  toast_txn_deleted:{bn:"লেনদেন মুছে ফেলা হয়েছে", en:"Transaction deleted"},
-  toast_saved:{bn:"সংরক্ষণ করা হয়েছে", en:"Saved"},
-  toast_only_images:{bn:"শুধুমাত্র ছবি ফাইল আপলোড করুন", en:"Please upload an image file only"},
-  toast_image_too_big:{bn:"ছবির সাইজ ২ এমবির বেশি হতে পারবে না", en:"Image size cannot exceed 2MB"},
-  toast_logo_changed:{bn:"লোগো পরিবর্তন করা হয়েছে", en:"Logo updated"},
-  toast_logo_reset:{bn:"ডিফল্ট লোগো পুনরুদ্ধার করা হয়েছে", en:"Default logo restored"},
-  confirm_reset_all_1:{bn:"সতর্কতা: সকল ডেটা স্থায়ীভাবে মুছে যাবে। আপনি কি নিশ্চিত?", en:"Warning: all data will be permanently deleted. Are you sure?"},
-  confirm_reset_all_2:{bn:"এটি আর ফিরিয়ে আনা যাবে না। আবার নিশ্চিত করুন।", en:"This cannot be undone. Please confirm again."},
-  toast_all_data_deleted:{bn:"সকল ডেটা মুছে ফেলা হয়েছে", en:"All data deleted"},
-  toast_category_added:{bn:"ক্যাটাগরি যোগ হয়েছে", en:"Category added"},
-  toast_backup_downloaded:{bn:"ব্যাকআপ ফাইল ডাউনলোড হয়েছে", en:"Backup file downloaded"},
-  toast_invalid_backup:{bn:"ফাইলটি সঠিক ব্যাকআপ নয়", en:"This file is not a valid backup"},
-  confirm_import:{bn:"বর্তমান সকল ডেটা প্রতিস্থাপিত হবে। আমদানি করতে চান?", en:"All current data will be replaced. Do you want to import?"},
-  toast_import_success:{bn:"ব্যাকআপ থেকে ডেটা আমদানি হয়েছে", en:"Data imported from backup"},
-  toast_import_error:{bn:"ফাইল পড়তে সমস্যা হয়েছে", en:"There was a problem reading the file"},
-  toast_excel_exported:{bn:"সকল রিপোর্টের এক্সেল ফাইল ডাউনলোড হয়েছে", en:"Excel file with all reports downloaded"},
-  toast_excel_lib_missing:{bn:"এক্সেল লাইব্রেরি লোড হয়নি — ইন্টারনেট সংযোগ পরীক্ষা করুন", en:"Excel library failed to load — please check your internet connection"},
+  toast_name_required:"Name is required",
+  toast_project_name_required:"Project name is required",
+  toast_project_saved:"Project saved",
+  toast_account_saved:"Account saved",
+  toast_valid_amount:"Please enter a valid amount",
+  toast_same_account_transfer:"Cannot transfer to the same account",
+  toast_select_account:"Please select an account",
+  toast_txn_saved:"Transaction saved",
+  pending_edit_tag:"Edit pending approval",
+  edited_tag:"Edited",
+  approved_by_short:"Approved by",
+  approve_btn:"Approve",
+  reject_btn:"Reject",
+  non_admin_edit_note:"⚠️ Your change won't apply immediately — it will wait for an admin's approval.",
+  overwrite_pending_note:"⚠️ This entry already has an edit pending approval. Submitting now will replace that earlier proposal.",
+  toast_edit_submitted:"Edit submitted — awaiting admin approval",
+  toast_edit_approved:"Edit approved",
+  toast_edit_rejected:"Edit rejected",
+  confirm_reject_edit:"Reject this proposed edit? The original data will remain unchanged.",
+  confirm_del_project:"This project and all its transactions will be deleted. Are you sure?",
+  toast_project_deleted:"Project deleted",
+  confirm_del_account:"This account will be deleted (its transactions will remain but become unlinked). Are you sure?",
+  toast_account_deleted:"Account deleted",
+  confirm_del_txn:"Delete this transaction?",
+  toast_txn_deleted:"Transaction deleted",
+  toast_saved:"Saved",
+  toast_only_images:"Please upload an image file only",
+  toast_image_too_big:"Image size cannot exceed 2MB",
+  toast_logo_changed:"Logo updated",
+  toast_logo_reset:"Default logo restored",
+  confirm_reset_all_1:"Warning: all data will be permanently deleted. Are you sure?",
+  confirm_reset_all_2:"This cannot be undone. Please confirm again.",
+  toast_all_data_deleted:"All data deleted",
+  toast_category_added:"Category added",
+  toast_backup_downloaded:"Backup file downloaded",
+  toast_excel_exported:"Excel file with all reports downloaded",
+  toast_excel_lib_missing:"Excel library failed to load — please check your internet connection",
 
-  xl_sheet_summary:{bn:"সারসংক্ষেপ", en:"Summary"},
-  xl_sheet_projects:{bn:"প্রজেক্ট", en:"Projects"},
-  xl_sheet_banks:{bn:"ব্যাংক হিসাব", en:"Bank Accounts"},
-  xl_sheet_cash:{bn:"ক্যাশ হিসাব", en:"Cash Accounts"},
-  xl_sheet_txns:{bn:"সকল লেনদেন", en:"All Transactions"},
-  xl_metric:{bn:"বিষয়", en:"Metric"},
-  xl_value:{bn:"পরিমাণ", en:"Value"},
-  xl_total_bank_balance:{bn:"মোট ব্যাংক ব্যালেন্স", en:"Total Bank Balance"},
-  xl_total_cash_balance:{bn:"মোট ক্যাশ ব্যালেন্স", en:"Total Cash Balance"},
-  xl_generated_on:{bn:"রিপোর্ট তৈরির তারিখ", en:"Report Generated On"},
+  xl_sheet_summary:"Summary",
+  xl_sheet_projects:"Projects",
+  xl_sheet_banks:"Bank Accounts",
+  xl_sheet_cash:"Cash Accounts",
+  xl_sheet_txns:"All Transactions",
+  xl_metric:"Metric",
+  xl_value:"Value",
+  xl_total_bank_balance:"Total Bank Balance",
+  xl_total_cash_balance:"Total Cash Balance",
+  xl_generated_on:"Report Generated On",
 
-  auth_setup_title:{bn:"প্রথমবার সেটআপ — মূল অ্যাডমিন একাউন্ট তৈরি করুন", en:"First-time Setup — Create Main Admin Account"},
-  auth_setup_subtitle:{bn:"এই একাউন্ট দিয়ে আপনি অন্যান্য ইউজার তৈরি করতে পারবেন", en:"You can create other users with this account"},
-  auth_username:{bn:"ইউজারনেম", en:"Username"},
-  auth_password:{bn:"পাসওয়ার্ড", en:"Password"},
-  auth_confirm_password:{bn:"পাসওয়ার্ড নিশ্চিত করুন", en:"Confirm Password"},
-  auth_create_admin:{bn:"অ্যাডমিন একাউন্ট তৈরি করুন", en:"Create Admin Account"},
-  auth_login_subtitle:{bn:"চালিয়ে যেতে আপনার ইউজারনেম ও পাসওয়ার্ড দিন", en:"Enter your username and password to continue"},
-  auth_login_btn:{bn:"লগ ইন", en:"Log In"},
-  auth_logout:{bn:"লগ আউট", en:"Log Out"},
-  auth_toast_fields_required:{bn:"সব ঘর পূরণ করুন", en:"Please fill in all fields"},
-  auth_toast_password_mismatch:{bn:"পাসওয়ার্ড মিলছে না", en:"Passwords do not match"},
-  auth_toast_password_min:{bn:"পাসওয়ার্ড কমপক্ষে ৪ অক্ষরের হতে হবে", en:"Password must be at least 4 characters"},
-  auth_toast_admin_created:{bn:"অ্যাডমিন একাউন্ট তৈরি হয়েছে", en:"Admin account created"},
-  auth_toast_invalid_login:{bn:"ইউজারনেম বা পাসওয়ার্ড ভুল", en:"Incorrect username or password"},
-  auth_toast_logged_in:{bn:"লগ ইন সফল হয়েছে", en:"Logged in successfully"},
+  auth_setup_title:"First-time Setup — Create Main Admin Account",
+  auth_setup_subtitle:"You can create other users with this account",
+  auth_username:"Username",
+  auth_password:"Password",
+  auth_confirm_password:"Confirm Password",
+  auth_create_admin:"Create Admin Account",
+  auth_login_subtitle:"Enter your username and password to continue",
+  auth_login_btn:"Log In",
+  auth_logout:"Log Out",
+  auth_toast_fields_required:"Please fill in all fields",
+  auth_toast_password_mismatch:"Passwords do not match",
+  auth_toast_password_min:"Password must be at least 4 characters",
+  auth_toast_admin_created:"Admin account created",
+  auth_toast_invalid_login:"Incorrect username or password",
+  auth_toast_logged_in:"Logged in successfully",
 
-  my_account:{bn:"আমার একাউন্ট", en:"My Account"},
-  logged_in_as:{bn:"লগ ইন করা আছে", en:"Logged in as"},
-  current_password:{bn:"বর্তমান পাসওয়ার্ড", en:"Current Password"},
-  new_password:{bn:"নতুন পাসওয়ার্ড", en:"New Password"},
-  confirm_new_password:{bn:"নতুন পাসওয়ার্ড নিশ্চিত করুন", en:"Confirm New Password"},
-  change_password_btn:{bn:"পাসওয়ার্ড পরিবর্তন করুন", en:"Change Password"},
-  toast_password_changed:{bn:"পাসওয়ার্ড পরিবর্তন হয়েছে", en:"Password changed successfully"},
-  toast_current_password_wrong:{bn:"বর্তমান পাসওয়ার্ড সঠিক নয়", en:"Current password is incorrect"},
+  my_account:"My Account",
+  logged_in_as:"Logged in as",
+  current_password:"Current Password",
+  new_password:"New Password",
+  confirm_new_password:"Confirm New Password",
+  change_password_btn:"Change Password",
+  toast_password_changed:"Password changed successfully",
+  toast_current_password_wrong:"Current password is incorrect",
 
-  user_management:{bn:"ইউজার ব্যবস্থাপনা", en:"User Management"},
-  user_management_hint:{bn:"শুধুমাত্র অ্যাডমিন নতুন ইউজার তৈরি করতে পারবে; নিষ্ক্রিয় করলে সেই ইউজার আর লগইন করতে পারবে না", en:"Only an admin can create users; disabling a user immediately blocks their login"},
-  new_user:{bn:"নতুন ইউজার", en:"New User"},
-  role_label:{bn:"ভূমিকা", en:"Role"},
-  role_admin:{bn:"অ্যাডমিন", en:"Admin"},
-  role_user:{bn:"সাধারণ ইউজার", en:"Regular User"},
-  create_user_btn:{bn:"ইউজার তৈরি করুন", en:"Create User"},
-  status_active:{bn:"সক্রিয়", en:"Active"},
-  status_disabled:{bn:"নিষ্ক্রিয়", en:"Disabled"},
-  enable_user_btn:{bn:"সক্রিয় করুন", en:"Enable"},
-  disable_user_btn:{bn:"নিষ্ক্রিয় করুন", en:"Disable"},
-  your_password_confirm:{bn:"আপনার নিজের পাসওয়ার্ড (নিশ্চিতকরণ)", en:"Your own password (to confirm)"},
-  your_password_confirm_hint:{bn:"নতুন ইউজার তৈরির সময় সাময়িকভাবে সেশন পাল্টাতে হয়, তাই আপনার পাসওয়ার্ড দিয়ে আবার অ্যাডমিন হিসেবে ফিরিয়ে আনা হবে।", en:"Creating a user briefly switches sessions internally, so your password is needed to sign you back in as admin afterward."},
-  forgot_password_admin_hint:{bn:"কারো পাসওয়ার্ড ভুলে গেলে: Supabase Dashboard → Authentication → Users এ গিয়ে সরাসরি নতুন পাসওয়ার্ড সেট করা যায় (এখান থেকে সরাসরি রিসেট করা যায় না, নিরাপত্তার কারণে)।", en:"If someone forgets their password: go to Supabase Dashboard → Authentication → Users and set a new password there directly (this can't be reset from inside the app itself, by design, for security)."},
-  toast_wrong_own_password:{bn:"আপনার পাসওয়ার্ড ভুল — ইউজার তৈরি হয়েছে কিনা যাচাই করে আবার লগইন করুন", en:"Your password was wrong — please check if the user was created and log in again"},
-  toast_user_enabled:{bn:"ইউজার সক্রিয় করা হয়েছে", en:"User enabled"},
-  confirm_delete_user:{bn:"এই ইউজারকে নিষ্ক্রিয় করবেন? সে আর লগইন করতে পারবে না।", en:"Disable this user? They will no longer be able to log in."},
-  toast_user_deleted:{bn:"ইউজার নিষ্ক্রিয় করা হয়েছে", en:"User disabled"},
-  toast_cannot_delete_self:{bn:"নিজের একাউন্ট নিষ্ক্রিয় করতে পারবেন না", en:"You cannot disable your own account"},
-  toast_cannot_delete_last_admin:{bn:"শেষ সক্রিয় অ্যাডমিন একাউন্টটি নিষ্ক্রিয় করা যাবে না", en:"Cannot disable the last active admin account"},
-  toast_user_created:{bn:"নতুন ইউজার তৈরি হয়েছে", en:"New user created"},
-  toast_username_taken:{bn:"এই ইউজারনেমটি ইতিমধ্যে ব্যবহৃত হচ্ছে", en:"This username is already taken"},
-  created_on:{bn:"তৈরির তারিখ", en:"Created On"},
-  security_local_note:{bn:"এই সিস্টেমে লগইন এখন Supabase-এর নিজস্ব Auth দিয়ে নিয়ন্ত্রিত এবং RLS দ্বারা সুরক্ষিত — শুধু URL+key জেনে ফেললেই কেউ ডেটা পড়তে/লিখতে পারবে না, বৈধ লগইন লাগবে। তারপরও আপনার Supabase URL ও Anon Key পাবলিকভাবে শেয়ার না করাই ভালো অভ্যাস।", en:"Login is now backed by Supabase's own Auth system and protected by RLS — knowing the URL+key alone is no longer enough to read or write data, a valid login is required. Still, avoid sharing your Supabase URL and Anon Key publicly as good practice."},
+  user_management_hint:"Only an admin can create users; disabling a user immediately blocks their login",
+  new_user:"New User",
+  role_label:"Role",
+  role_admin:"Admin",
+  role_user:"Regular User",
+  create_user_btn:"Create User",
+  status_active:"Active",
+  status_disabled:"Disabled",
+  enable_user_btn:"Enable",
+  disable_user_btn:"Disable",
+  your_password_confirm:"Your own password (to confirm)",
+  your_password_confirm_hint:"Creating a user briefly switches sessions internally, so your password is needed to sign you back in as admin afterward.",
+  forgot_password_admin_hint:"If someone forgets their password: go to Supabase Dashboard → Authentication → Users and set a new password there directly (this can't be reset from inside the app itself, by design, for security).",
+  toast_wrong_own_password:"Your password was wrong — please check if the user was created and log in again",
+  toast_user_enabled:"User enabled",
+  confirm_delete_user:"Disable this user? They will no longer be able to log in.",
+  toast_user_deleted:"User disabled",
+  toast_cannot_delete_self:"You cannot disable your own account",
+  toast_cannot_delete_last_admin:"Cannot disable the last active admin account",
+  toast_user_created:"New user created",
+  toast_username_taken:"This username is already taken",
+  created_on:"Created On",
+  security_local_note:"Login is now backed by Supabase's own Auth system and protected by RLS — knowing the URL+key alone is no longer enough to read or write data, a valid login is required. Still, avoid sharing your Supabase URL and Anon Key publicly as good practice.",
 
-  col_created_by:{bn:"এন্ট্রিকারী", en:"Entered By"},
-  col_created_at:{bn:"এন্ট্রির সময়", en:"Entry Time"},
-  created_by_short:{bn:"এন্ট্রি", en:"Entry by"},
-  nav_users:{bn:"ইউজার ব্যবস্থাপনা", en:"User Management"},
+  col_created_by:"Entered By",
+  created_by_short:"Entry by",
+  nav_users:"User Management",
 
-  db_connect_title:{bn:"ডাটাবেজ সংযোগ সেটআপ", en:"Database Connection Setup"},
-  db_connect_subtitle:{bn:"সবার ডেটা একসাথে (ক্লাউডে) রাখতে Supabase প্রজেক্টের তথ্য দিন", en:"Enter your Supabase project details to keep everyone's data in one shared cloud database"},
-  db_project_url:{bn:"Supabase Project URL", en:"Supabase Project URL"},
-  db_anon_key:{bn:"Supabase Anon (public) Key", en:"Supabase Anon (public) Key"},
-  db_connect_btn:{bn:"সংযোগ করুন", en:"Connect"},
-  db_connect_help:{bn:"Supabase ড্যাশবোর্ড → Project Settings → API থেকে এই দুটি তথ্য পাবেন। এই তথ্য শুধু এই ব্রাউজারেই সংরক্ষিত হবে।", en:"Find these under Supabase Dashboard → Project Settings → API. This info is stored only in this browser."},
-  db_loading:{bn:"ডেটা লোড হচ্ছে...", en:"Loading data..."},
-  db_connect_error:{bn:"সংযোগ ব্যর্থ হয়েছে। URL ও Key যাচাই করে আবার চেষ্টা করুন।", en:"Connection failed. Please check the URL and Key and try again."},
-  db_change_connection:{bn:"ডাটাবেজ সংযোগ পরিবর্তন করুন", en:"Change Database Connection"},
-  confirm_change_db:{bn:"আপনি লগ আউট হয়ে যাবেন এবং নতুন ডাটাবেজ কনফিগার করতে হবে। এগোতে চান?", en:"You will be logged out and asked to configure a new database. Continue?"},
-  toast_saving:{bn:"সংরক্ষণ হচ্ছে...", en:"Saving..."},
-  toast_sync_error:{bn:"সিঙ্ক করতে সমস্যা হয়েছে, ইন্টারনেট সংযোগ পরীক্ষা করুন", en:"Sync failed, please check your internet connection"}
+  db_connect_title:"Database Connection Setup",
+  db_connect_subtitle:"Enter your Supabase project details to keep everyone's data in one shared cloud database",
+  db_project_url:"Supabase Project URL",
+  db_anon_key:"Supabase Anon (public) Key",
+  db_connect_btn:"Connect",
+  db_connect_help:"Find these under Supabase Dashboard → Project Settings → API. This info is stored only in this browser.",
+  db_loading:"Loading data...",
+  db_connect_error:"Connection failed. Please check the URL and Key and try again.",
+  db_change_connection:"Change Database Connection",
+  confirm_change_db:"You will be logged out and asked to configure a new database. Continue?",
+  toast_sync_error:"Sync failed, please check your internet connection",
 };
 function L(key, vars){
-  const row = DICT[key];
-  let s = row ? (row[LANG] || row.bn || key) : key;
+  let s = DICT[key] || key;
   if(vars){ Object.keys(vars).forEach(k=>{ s = s.replace("{"+k+"}", vars[k]); }); }
   return s;
 }
-function setLang(l){
-  LANG = l;
-  try{ localStorage.setItem(LANG_KEY, l); }catch(e){}
-  render();
-}
-
 function fmt(n){
   n = Number(n)||0;
   const neg = n < 0;
@@ -709,9 +687,7 @@ function fmt(n){
 function fmtDate(d){
   if(!d) return "-";
   const dt = new Date(d+"T00:00:00");
-  const monthsBn=["জান","ফেব","মার্চ","এপ্রি","মে","জুন","জুলা","আগ","সেপ্টে","অক্টো","নভে","ডিসে"];
-  const monthsEn=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const months = LANG==='en'? monthsEn : monthsBn;
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   return dt.getDate()+" "+months[dt.getMonth()]+" "+dt.getFullYear();
 }
 function todayStr(){ return new Date().toISOString().slice(0,10); }
@@ -786,7 +762,7 @@ let DB = defaultDB();
 
 /* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
 function editStatusFields(r){ return {isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
-function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, trackingToken:r.tracking_token||"", projectCode:(r.project_code!=null? Number(r.project_code) : null), ...editStatusFields(r)}; }
+function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, projectCode:(r.project_code!=null? Number(r.project_code) : null), ...editStatusFields(r)}; }
 function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", employeeName:r.employee_name||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
@@ -1519,20 +1495,6 @@ function rowTxn(t, opts={}){
 
 /* ---------------- Projects ---------------- */
 let PROJECT_SEARCH = "";
-function officeExpenseCard(){
-  const t = officeExpenseTotals();
-  return `
-  <div class="proj-card" data-office-expense="1" style="cursor:pointer; border-color:var(--amber-500); background:#fffaf3;">
-    <div class="top">
-      <div><div class="pname">🏢 ${L('general_company')}</div><div class="pclient">${L('office_expense_card_hint')}</div></div>
-    </div>
-    <div class="proj-nums">
-      <div><div class="l">${L('income')}</div><div class="v" style="color:var(--ok)">${fmt(t.income)}</div></div>
-      <div><div class="l">${L('expense')}</div><div class="v" style="color:var(--bad)">${fmt(t.expense)}</div></div>
-      <div><div class="l">${L('net')}</div><div class="v">${fmt(t.net)}</div></div>
-    </div>
-  </div>`;
-}
 function pageProjects(){
   const q = PROJECT_SEARCH.trim().toLowerCase();
   const filtered = !q? DB.projects : DB.projects.filter(p=>{
@@ -1585,11 +1547,6 @@ function pageProjectDetail(id){
       <div class="hint">Client-facing progress: ${p.progressPercent||0}%</div>
       <div class="progress-bar"><div class="progress-fill" style="width:${p.progressPercent||0}%"></div></div>
     </div>
-    ${p.trackingToken? `
-    <div class="hint" style="margin-top:10px; word-break:break-all;">
-      🔗 Tracking link: https://gpebd.com/track.html?token=${p.trackingToken}
-      <button class="btn btn-sm" style="margin-left:6px;" onclick="navigator.clipboard.writeText('https://gpebd.com/track.html?token=${p.trackingToken}'); toast('Link copied');">Copy</button>
-    </div>`:""}
   </div>
 
   <div class="grid grid-3" style="margin-top:16px;">
@@ -2070,14 +2027,6 @@ function formProject(existing){
       </div>
       <div class="field"><label>Client-facing progress (%)</label><input type="number" id="pfProgress" min="0" max="100" value="${p.progressPercent||0}"></div>
       <div class="field"><label>${L('notes')}</label><textarea id="pfNotes" rows="2">${p.notes||""}</textarea></div>
-      ${existing && existing.trackingToken? `
-      <div class="field">
-        <label>Client tracking link</label>
-        <div style="display:flex; gap:6px;">
-          <input id="pfTrackLink" readonly value="https://gpebd.com/track.html?token=${existing.trackingToken}">
-          <button type="button" class="btn btn-sm" id="pfCopyLink">Copy</button>
-        </div>
-      </div>`:""}
     </div>
     <div class="modal-foot">
       <button class="btn" id="mCancel">${L('cancel')}</button>
@@ -2086,8 +2035,6 @@ function formProject(existing){
   `, (overlay)=>{
     overlay.querySelector("#mClose").onclick = closeModal;
     overlay.querySelector("#mCancel").onclick = closeModal;
-    const copyBtn = overlay.querySelector("#pfCopyLink");
-    if(copyBtn){ copyBtn.onclick = ()=>{ const inp = overlay.querySelector("#pfTrackLink"); inp.select(); navigator.clipboard.writeText(inp.value); toast("Link copied"); }; }
     overlay.querySelector("#pfSave").onclick = async ()=>{
       const name = overlay.querySelector("#pfName").value.trim();
       if(!name){ toast(L('toast_project_name_required')); return; }
@@ -2511,9 +2458,6 @@ function bindGlobalEvents(){
   document.querySelectorAll("[data-nav]").forEach(el=>{
     el.addEventListener("click", ()=> navigate(el.dataset.nav, el.dataset.id));
   });
-  document.querySelectorAll("[data-setlang]").forEach(el=>{
-    el.addEventListener("click", ()=> setLang(el.dataset.setlang));
-  });
 
   const menuToggle = document.getElementById("btnMenuToggle");
   if(menuToggle) menuToggle.onclick = ()=>{ SIDEBAR_OPEN = !SIDEBAR_OPEN; render(); };
@@ -2536,12 +2480,6 @@ function bindGlobalEvents(){
       if(el2){ el2.focus(); el2.setSelectionRange(cursorPos, cursorPos); }
     });
   }
-
-  const officeExpenseCardEl = document.querySelector("[data-office-expense]");
-  if(officeExpenseCardEl) officeExpenseCardEl.addEventListener("click", ()=>{
-    FILTERS = {type:"",scope:"",projectId:"__company__",accountType:"",accountId:"",from:"",to:"",q:""};
-    navigate("transactions");
-  });
 
   document.querySelectorAll("[data-profit-view]").forEach(el=>{
     el.addEventListener("click", ()=>{
