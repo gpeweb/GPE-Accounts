@@ -1467,12 +1467,18 @@ function progressShareView(projectId){
     </div>`;
   document.body.innerHTML = html;
 }
-function handleProgressShare(projectId){
+async function handleProgressShare(projectId){
   const url = progressShareUrl(projectId);
-  if(navigator.clipboard){
-    navigator.clipboard.writeText(url).then(()=>alert("Progress link copied:\\n\\n"+url)).catch(()=>prompt("Copy this progress link:",url));
-  } else {
-    prompt("Copy this progress link:",url);
+  try{
+    await navigator.clipboard.writeText(url);
+    alert("Progress link copied successfully!\n\n" + url);
+  }catch(e){
+    const ta=document.createElement("textarea");
+    ta.value=url; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    try{ document.execCommand("copy"); alert("Progress link copied successfully!\n\n" + url); }
+    catch(err){ prompt("Copy this Progress Link:",url); }
+    ta.remove();
   }
 }
 
@@ -2549,6 +2555,13 @@ function bindGlobalEvents(){
 
   const addProj = document.getElementById("btnAddProject");
   if(addProj) addProj.onclick = ()=> formProject(null);
+
+  document.querySelectorAll("[data-share-progress]").forEach(el=>{
+    el.addEventListener("click", (e)=>{
+      e.preventDefault(); e.stopPropagation();
+      handleProgressShare(el.dataset.shareProgress);
+    });
+  });
 
   const projSearch = document.getElementById("projectSearchInput");
   if(projSearch){
