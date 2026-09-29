@@ -475,6 +475,10 @@ const DICT = {
   reset:"Reset",
   filtered_income:"Filtered Income",
   filtered_expense:"Filtered Expense",
+  transaction_sort_label:"Sort by Date",
+  newest_first:"New → Old",
+  oldest_first:"Old → New",
+  search_date_label:"Search Date",
 
   total_income_alltime:"Total Income (All-time)",
   total_expense_alltime:"Total Expense (All-time)",
@@ -929,7 +933,7 @@ function stampUpdated(obj){
 /* ---------------- Router / State ---------------- */
 let ROUTE = {page:"dashboard", id:null};
 let SIDEBAR_OPEN = false;
-let FILTERS = { type:"", scope:"", projectId:"", accountType:"", accountId:"", from:"", to:"", q:"" };
+let FILTERS = { type:"", scope:"", projectId:"", accountType:"", accountId:"", from:"", to:"", date:"", q:"", sortDate:"desc" };
 
 function navigate(page, id=null){
   ROUTE = {page, id};
@@ -1452,15 +1456,15 @@ function transactionsTable(list, opts={}){
   <div class="table-wrap">
   <table>
     <thead><tr>
-      <th>${L('col_date')}</th><th>${L('col_type')}</th>${opts.showProject?`<th>${L('col_project')}</th>`:""}<th>${L('col_account')}</th><th>${L('col_category')}</th><th>${L('col_description')}</th><th style="text-align:right;">${L('col_amount')}</th><th></th>
+      <th style="width:58px; text-align:center;">SL</th><th>${L('col_date')}</th><th>${L('col_type')}</th>${opts.showProject?`<th>${L('col_project')}</th>`:""}<th>${L('col_account')}</th><th>${L('col_category')}</th><th>${L('col_description')}</th><th style="text-align:right;">${L('col_amount')}</th><th></th>
     </tr></thead>
     <tbody>
-      ${list.map(t=>rowTxn(t, opts)).join("")}
+      ${list.map((t,i)=>rowTxn(t, opts, i+1)).join("")}
     </tbody>
   </table>
   </div>`;
 }
-function rowTxn(t, opts={}){
+function rowTxn(t, opts={}, serial=null){
   const typeTag = t.type==="income"? `<span class="tag tag-income">${L('income')}</span>`
     : t.type==="expense"? `<span class="tag tag-expense">${L('expense')}</span>`
     : t.type==="withdrawal"? `<span class="tag tag-expense">${L('withdrawal')}</span>`
@@ -1480,6 +1484,7 @@ function rowTxn(t, opts={}){
   const voucherHint = t.voucherNo? `<div class="hint" style="margin-top:2px;">${(t.type==='income'?L('cash_receipt_no_short'):L('voucher_no_short'))}: ${t.voucherNo}</div>` : "";
   const employeeHint = t.employeeName? `<div class="hint" style="margin-top:2px;">${L('employee_name_label')}: ${t.employeeName}</div>` : "";
   return `<tr>
+    ${serial!==null ? `<td class="num" style="text-align:center; color:var(--ink-400);">${serial}</td>` : ""}
     <td>${fmtDate(t.date)}</td>
     <td>${typeTag}</td>
     ${opts.showProject? `<td>${projectName(t.projectId)}</td>`:""}
@@ -1785,18 +1790,29 @@ function applyFilters(list){
     if(FILTERS.projectId && FILTERS.projectId!=="__company__" && t.projectId!==FILTERS.projectId) return false;
     if(FILTERS.accountType && t.accountType!==FILTERS.accountType) return false;
     if(FILTERS.accountId && t.accountId!==FILTERS.accountId) return false;
+    if(FILTERS.date && t.date !== FILTERS.date) return false;
     if(FILTERS.from && t.date < FILTERS.from) return false;
     if(FILTERS.to && t.date > FILTERS.to) return false;
     if(FILTERS.q){
       const q = FILTERS.q.toLowerCase();
-      const hay = (t.desc||"")+" "+(t.category||"")+" "+(t.voucherNo||"")+" "+(t.chequeNo||"");
+      const hay = (t.desc||"")+" "+(t.category||"")+" "+(t.voucherNo||"")+" "+(t.chequeNo||"")+" "+(t.chequeBankName||"")+" "+(t.withdrawnBy||"")+" "+(t.employeeName||"");
       if(!hay.toLowerCase().includes(q)) return false;
     }
     return true;
   });
 }
+
+function transactionDateSort(a,b){
+  const dateCmp = (a.date||"").localeCompare(b.date||"");
+  if(dateCmp !== 0) return FILTERS.sortDate === "asc" ? dateCmp : -dateCmp;
+  // Same-date entries stay stable and newest-created appears first.
+  const createdCmp = (a.createdAt||"").localeCompare(b.createdAt||"");
+  if(createdCmp !== 0) return -createdCmp;
+  return String(a.id||"").localeCompare(String(b.id||""));
+}
+
 function pageTransactions(){
-  const list = applyFilters([...DB.transactions]).sort((a,b)=>b.date.localeCompare(a.date));
+  const list = applyFilters([...DB.transactions]).sort(transactionDateSort);
   const sumIn = list.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount),0);
   const sumOut = list.filter(t=>isRealExpense(t)).reduce((s,t)=>s+Number(t.amount),0);
   return `
@@ -1808,8 +1824,13 @@ function pageTransactions(){
       ${DB.projects.map(p=>`<option value="${p.id}" ${FILTERS.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
     </select>
     <select id="fAccType"><option value="">${L('all_accounts')}</option><option value="bank" ${FILTERS.accountType==='bank'?'selected':''}>${L('bank_label')}</option><option value="cash" ${FILTERS.accountType==='cash'?'selected':''}>${L('cash_label')}</option></select>
-    <input type="date" id="fFrom" value="${FILTERS.from}">
-    <input type="date" id="fTo" value="${FILTERS.to}">
+    <select id="fSortDate" title="${L('transaction_sort_label')}">
+      <option value="desc" ${FILTERS.sortDate==='desc'?'selected':''}>${L('newest_first')}</option>
+      <option value="asc" ${FILTERS.sortDate==='asc'?'selected':''}>${L('oldest_first')}</option>
+    </select>
+    <input type="date" id="fDate" value="${FILTERS.date}" title="${L('search_date_label')}">
+    <input type="date" id="fFrom" value="${FILTERS.from}" title="From Date">
+    <input type="date" id="fTo" value="${FILTERS.to}" title="To Date">
     <input type="text" id="fQ" placeholder="${L('search_placeholder')}" value="${FILTERS.q}" style="min-width:160px;">
     <button class="btn btn-sm btn-ghost" id="fClear">${L('reset')}</button>
   </div>
@@ -2596,14 +2617,16 @@ function bindGlobalEvents(){
   });
 
   /* filters */
-  ["fType","fProject","fAccType","fFrom","fTo","fQ"].forEach(id=>{
+  ["fType","fProject","fAccType","fSortDate","fDate","fFrom","fTo","fQ"].forEach(id=>{
     const el = document.getElementById(id);
     if(!el) return;
-    const ev = (id==='fQ')? 'input':'change';
+    const ev = (id==='fQ') ? 'input' : 'change';
     el.addEventListener(ev, ()=>{
       FILTERS.type = document.getElementById("fType").value;
       FILTERS.projectId = document.getElementById("fProject").value;
       FILTERS.accountType = document.getElementById("fAccType").value;
+      FILTERS.sortDate = document.getElementById("fSortDate").value;
+      FILTERS.date = document.getElementById("fDate").value;
       FILTERS.from = document.getElementById("fFrom").value;
       FILTERS.to = document.getElementById("fTo").value;
       FILTERS.q = document.getElementById("fQ").value;
@@ -2611,7 +2634,7 @@ function bindGlobalEvents(){
     });
   });
   const fClear = document.getElementById("fClear");
-  if(fClear) fClear.onclick = ()=>{ FILTERS = {type:"",scope:"",projectId:"",accountType:"",accountId:"",from:"",to:"",q:""}; render(); };
+  if(fClear) fClear.onclick = ()=>{ FILTERS = {type:"",scope:"",projectId:"",accountType:"",accountId:"",from:"",to:"",date:"",q:"",sortDate:"desc"}; render(); };
 
   /* settings */
   const saveCompany = document.getElementById("btnSaveCompany");
