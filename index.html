@@ -766,7 +766,7 @@ let DB = defaultDB();
 
 /* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
 function editStatusFields(r){ return {isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
-function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, projectCode:(r.project_code!=null? Number(r.project_code) : null), ...editStatusFields(r)}; }
+function mapProjectRow(r){ return {id:r.id, name:r.name, client:r.client||"", startDate:r.start_date||"", budget:Number(r.budget)||0, status:r.status||"running", notes:r.notes||"", createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", progressPercent:Number(r.progress_percent)||0, projectCode:(r.project_code!=null? Number(r.project_code) : null), trackingToken:r.tracking_token||"", ...editStatusFields(r)}; }
 function mapBankRow(r){ return {id:r.id, name:r.name, bankName:r.bank_name||"", branch:r.branch||"", accNo:r.acc_no||"", opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapCashRow(r){ return {id:r.id, name:r.name, opening:Number(r.opening)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", ...editStatusFields(r)}; }
 function mapTxnRow(r){ return {id:r.id, date:r.date, type:r.type, projectId:r.project_id, accountType:r.account_type, accountId:r.account_id, toAccountType:r.to_account_type, toAccountId:r.to_account_id, category:r.category||"", desc:r.description||"", voucherNo:r.voucher_no||"", method:r.method||"", chequeNo:r.cheque_no||"", chequeBankName:r.cheque_bank_name||"", withdrawnBy:r.withdrawn_by||"", employeeName:r.employee_name||"", amount:Number(r.amount)||0, createdBy:r.created_by||"", createdAt:r.created_at||"", updatedBy:r.updated_by||"", updatedAt:r.updated_at||"", isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
@@ -1429,9 +1429,24 @@ function editStatusHtml(obj, kind, id){
   return "";
 }
 
-function progressShareUrl(projectId){
-  const base = window.location.href.split('#')[0];
-  return base + '#progress/' + encodeURIComponent(projectId);
+const CLIENT_TRACK_URL = "https://gpebd.com/track.html";
+
+async function progressShareUrl(projectId){
+  const p = DB.projects.find(x=>String(x.id)===String(projectId));
+  if(!p) throw new Error("Project not found");
+
+  // A private random token is stored on the project and is the only value
+  // exposed in the client-facing URL. No accounts/financial data is exposed.
+  let token = p.trackingToken;
+  if(!token){
+    token = (crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36)+Math.random().toString(36).slice(2));
+    const {data, error} = await SB.from("projects").update({tracking_token:token}).eq("id", p.id).select("tracking_token").single();
+    if(error) throw error;
+    token = data && data.tracking_token ? data.tracking_token : token;
+    p.trackingToken = token;
+  }
+
+  return CLIENT_TRACK_URL + "?token=" + encodeURIComponent(token);
 }
 function progressShareView(projectId){
   const p = DB.projects.find(x=>String(x.id)===String(projectId));
@@ -1468,17 +1483,22 @@ function progressShareView(projectId){
   document.body.innerHTML = html;
 }
 async function handleProgressShare(projectId){
-  const url = progressShareUrl(projectId);
   try{
-    await navigator.clipboard.writeText(url);
-    alert("Progress link copied successfully!\n\n" + url);
+    const url = await progressShareUrl(projectId);
+    try{
+      await navigator.clipboard.writeText(url);
+      alert("Client progress link copied successfully!\n\n" + url);
+    }catch(e){
+      const ta=document.createElement("textarea");
+      ta.value=url; ta.style.position="fixed"; ta.style.opacity="0";
+      document.body.appendChild(ta); ta.focus(); ta.select();
+      try{ document.execCommand("copy"); alert("Client progress link copied successfully!\n\n" + url); }
+      catch(err){ prompt("Copy this Client Progress Link:",url); }
+      ta.remove();
+    }
   }catch(e){
-    const ta=document.createElement("textarea");
-    ta.value=url; ta.style.position="fixed"; ta.style.opacity="0";
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    try{ document.execCommand("copy"); alert("Progress link copied successfully!\n\n" + url); }
-    catch(err){ prompt("Copy this Progress Link:",url); }
-    ta.remove();
+    console.error("Progress share error", e);
+    alert("Could not create the client progress link.\n\n" + (e.message || e));
   }
 }
 
