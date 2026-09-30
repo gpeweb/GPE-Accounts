@@ -291,6 +291,10 @@ tbody tr:hover{background:#fafcfb;}
 ::-webkit-scrollbar{width:9px; height:9px;}
 ::-webkit-scrollbar-thumb{background:#c7d5d2; border-radius:10px;}
 </style>
+<style id="progress-toast-style">
+#progressToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(15px);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 25px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:99999;white-space:nowrap;}
+#progressToast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+</style>
 </head>
 <body>
 <div id="app"></div>
@@ -1482,23 +1486,35 @@ function progressShareView(projectId){
     </div>`;
   document.body.innerHTML = html;
 }
+function showProgressToast(message, isError=false){
+  let t=document.getElementById("progressToast");
+  if(!t){
+    t=document.createElement("div"); t.id="progressToast";
+    document.body.appendChild(t);
+  }
+  t.textContent=message;
+  t.style.background=isError ? "#b91c1c" : "#111827";
+  t.classList.add("show");
+  clearTimeout(window.__progressToastTimer);
+  window.__progressToastTimer=setTimeout(()=>t.classList.remove("show"),2200);
+}
 async function handleProgressShare(projectId){
   try{
     const url = await progressShareUrl(projectId);
     try{
       await navigator.clipboard.writeText(url);
-      alert("Client progress link copied successfully!\n\n" + url);
+      showProgressToast("✓ Link copied");
     }catch(e){
       const ta=document.createElement("textarea");
       ta.value=url; ta.style.position="fixed"; ta.style.opacity="0";
       document.body.appendChild(ta); ta.focus(); ta.select();
-      try{ document.execCommand("copy"); alert("Client progress link copied successfully!\n\n" + url); }
+      try{ document.execCommand("copy"); showProgressToast("✓ Link copied"); }
       catch(err){ prompt("Copy this Client Progress Link:",url); }
       ta.remove();
     }
   }catch(e){
     console.error("Progress share error", e);
-    alert("Could not create the client progress link.\n\n" + (e.message || e));
+    showProgressToast("Could not create link", true);
   }
 }
 
