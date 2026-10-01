@@ -318,11 +318,16 @@ const LOGO_SVG = `<svg viewBox="0 0 415 315" xmlns="http://www.w3.org/2000/svg">
 const BOLT_SVG = `<svg viewBox="0 0 100 150" xmlns="http://www.w3.org/2000/svg"><path d="M60 0 L20 80 L45 80 L30 150 L90 55 L60 55 Z" fill="#0b3b46"/></svg>`;
 
 function getLogoHtml(){
-  if(DB.company && DB.company.logo){
-    return `<img src="${DB.company.logo}" alt="logo" style="width:100%; height:100%; object-fit:contain;">`;
+  const logo = (DB.company && DB.company.logo) || getCachedCompanyLogo();
+  if(logo){
+    return `<img src="${logo}" alt="logo" style="width:100%; height:100%; object-fit:contain;">`;
   }
   return LOGO_SVG;
 }
+
+const COMPANY_LOGO_CACHE_KEY = "gpe_company_logo";
+function getCachedCompanyLogo(){ try{return localStorage.getItem(COMPANY_LOGO_CACHE_KEY)||null;}catch(e){return null;} }
+function cacheCompanyLogo(logo){ try{ if(logo) localStorage.setItem(COMPANY_LOGO_CACHE_KEY, logo); else localStorage.removeItem(COMPANY_LOGO_CACHE_KEY); }catch(e){} }
 
 const CURRENCY = "৳";
 const uid = (p="id") => p + "_" + Math.random().toString(36).slice(2,9) + Date.now().toString(36).slice(-4);
@@ -805,7 +810,8 @@ async function fetchAllData(){
     if(shRes.error) throw shRes.error;
 
     const cr = companyRes.data || {};
-    DB.company = { name: cr.name || "General Power Engineering LTD", tagline: cr.tagline || "Trusted In Power Distribution", logo: cr.logo || null };
+    DB.company = { name: cr.name || "General Power Engineering LTD", tagline: cr.tagline || "Trusted In Power Distribution", logo: cr.logo || getCachedCompanyLogo() || null };
+    cacheCompanyLogo(DB.company.logo);
     DB.projects = (projRes.data||[]).map(mapProjectRow);
     DB.banks = (bankRes.data||[]).map(mapBankRow);
     DB.cash = (cashRes.data||[]).map(mapCashRow);
@@ -849,6 +855,15 @@ async function boot(){
   const cfg = getSbConfig();
   if(!cfg){ APP_STATE = "need_config"; render(); return; }
   initSupabase(cfg.url, cfg.key);
+  // Load the master company logo before authentication when RLS permits it.
+  // Cached logo remains available as a fallback, so login/setup screens stay consistent.
+  try{
+    const {data: companyRow} = await SB.from("company").select("name,tagline,logo").eq("id",1).maybeSingle();
+    if(companyRow){
+      DB.company = { name: companyRow.name || DB.company.name, tagline: companyRow.tagline || DB.company.tagline, logo: companyRow.logo || null };
+      cacheCompanyLogo(DB.company.logo);
+    }
+  }catch(e){}
   APP_STATE = "loading"; render();
 
   const { data:{ session } } = await SB.auth.getSession();
@@ -2763,8 +2778,11 @@ function bindGlobalEvents(){
     if(file.size > 2*1024*1024){ toast(L('toast_image_too_big')); return; }
     const reader = new FileReader();
     reader.onload = async (ev)=>{
-      const { error } = await SB.from("company").update({ logo: ev.target.result }).eq("id", 1);
+      const logoData = ev.target.result;
+      const { error } = await SB.from("company").update({ logo: logoData }).eq("id", 1);
       if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+      DB.company.logo = logoData;
+      cacheCompanyLogo(logoData);
       await refreshAndRender(); toast(L('toast_logo_changed'));
     };
     reader.readAsDataURL(file);
@@ -2773,6 +2791,8 @@ function bindGlobalEvents(){
   if(resetLogo) resetLogo.onclick = async ()=>{
     const { error } = await SB.from("company").update({ logo: null }).eq("id", 1);
     if(error){ toast(L('toast_sync_error')); console.error(error); return; }
+    DB.company.logo = null;
+    cacheCompanyLogo(null);
     await refreshAndRender(); toast(L('toast_logo_reset'));
   };
   const changeDb = document.getElementById("btnChangeDbConnection");
