@@ -1145,7 +1145,7 @@ function renderConfigScreen(){
   return `
   <div class="auth-wrap">
     <div class="auth-card">
-      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${getLogoHtml()}</div>
       <h2 style="margin:0 0 4px; text-align:center; font-size:17px;">${L('db_connect_title')}</h2>
       <p class="hint" style="text-align:center; margin-bottom:20px;">${L('db_connect_subtitle')}</p>
       <div class="field"><label>${L('db_project_url')}</label><input id="cfgUrl" placeholder="https://xxxxxxxx.supabase.co" value="${cfg?cfg.url:''}"></div>
@@ -1171,7 +1171,7 @@ function renderLoadingScreen(){
   return `
   <div class="auth-wrap">
     <div class="auth-card" style="text-align:center;">
-      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${getLogoHtml()}</div>
       <p class="hint">${L('db_loading')}</p>
     </div>
   </div>`;
@@ -1181,7 +1181,7 @@ function renderConfigErrorScreen(){
   return `
   <div class="auth-wrap">
     <div class="auth-card" style="text-align:center;">
-      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${LOGO_SVG}</div>
+      <div class="brand-mark" style="width:56px;height:56px;margin:0 auto 14px;">${getLogoHtml()}</div>
       <p class="hint" style="color:var(--bad);">${L('db_connect_error')}</p>
       <button class="btn btn-primary" id="cfgRetry" style="width:100%; justify-content:center; padding:11px; margin-top:12px;">${L('db_connect_btn')}</button>
       <button class="btn btn-ghost btn-sm" id="cfgChange" style="width:100%; justify-content:center; margin-top:8px;">${L('db_change_connection')}</button>
