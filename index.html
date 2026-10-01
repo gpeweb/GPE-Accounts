@@ -314,7 +314,18 @@ tbody tr:hover{background:#fafcfb;}
 @keyframes loginFloat{0%,100%{transform:translateY(0);opacity:.45}50%{transform:translateY(-14px);opacity:.85}}
 @keyframes loginGlow{0%,100%{transform:scale(.9);opacity:.4}50%{transform:scale(1.12);opacity:.75}}
 @keyframes loginOrbit{to{transform:rotate(360deg)}}
-@media(max-width:900px){.auth-login-wrap{display:block;min-height:100vh}.auth-login-visual{display:none}.auth-login-panel{min-height:100vh;padding:28px 18px}.auth-login-box{width:min(410px,100%)}.auth-login-name{font-size:21px}.auth-login-brand .brand-mark{width:70px;height:70px}}
+@media(max-width:1100px), (pointer:coarse){
+  .auth-login-wrap{display:block;grid-template-columns:1fr;min-height:100vh;width:100%;}
+  .auth-login-visual{display:none!important;}
+  .auth-login-panel{min-height:100vh;width:100%;box-sizing:border-box;padding:28px 18px;}
+  .auth-login-box{width:min(410px,100%);margin:0 auto;}
+  .auth-login-name{font-size:21px;}
+  .auth-login-brand .brand-mark{width:70px;height:70px;}
+}
+@media(max-width:480px){
+  .auth-login-panel{padding:22px 14px;}
+  .auth-login-card{padding:22px 18px;border-radius:18px;}
+}
 
 
 .spinner{width:34px; height:34px; border-radius:50%; border:3px solid rgba(255,255,255,0.25); border-top-color:#fff; animation:spin 0.8s linear infinite; margin:0 auto;}
