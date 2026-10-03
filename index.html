@@ -883,6 +883,7 @@ function defaultDB(){
   };
 }
 let DB = defaultDB();
+let CUSTOM_MENUS = [];
 
 /* row <-> app object mappers (snake_case DB columns <-> camelCase app fields) */
 function editStatusFields(r){ return {isEdited:!!r.is_edited, lastEditedBy:r.last_edited_by||"", lastEditedAt:r.last_edited_at||"", lastApprovedBy:r.last_approved_by||"", lastApprovedAt:r.last_approved_at||"", pendingEdit:r.pending_edit||null, pendingEditBy:r.pending_edit_by||"", pendingEditAt:r.pending_edit_at||""}; }
@@ -931,6 +932,7 @@ async function fetchAllData(){
     DB.shareholders = (shRes.data||[]).map(mapShareholderRow);
     DB.categories = { income:[], expense:[] };
     (catRes.data||[]).forEach(c=>{ if(DB.categories[c.kind]) DB.categories[c.kind].push(c.name); });
+    await loadCustomMenus();
     return true;
   }catch(e){
     console.error("fetchAllData error", e);
@@ -1020,6 +1022,7 @@ function setupRealtimeSync(){
     .on("postgres_changes", {event:"*", schema:"public", table:"profiles"}, onChange)
     .on("postgres_changes", {event:"*", schema:"public", table:"shareholders"}, onChange)
     .on("postgres_changes", {event:"*", schema:"public", table:"company"}, onChange)
+    .on("postgres_changes", {event:"*", schema:"public", table:"gpe_menu_items"}, onChange)
     .subscribe();
 }
 async function teardownRealtimeSync(){
@@ -1438,6 +1441,24 @@ function navItem(page, icon, label){
   return `<div class="nav-item ${active?'active':''}" data-nav="${page}"><span class="ic">${icon}</span><span>${label}</span></div>`;
 }
 
+const GPE_MENU_KEY="gpe_custom_menu_v1";
+function readCustomMenus(){return CUSTOM_MENUS.slice()}
+async function loadCustomMenus(){
+  if(!SB || !HAS_SESSION){CUSTOM_MENUS=[];return;}
+  const {data,error}=await SB.from("gpe_menu_items").select("id,label,parent_id,route,icon,sort_order").order("sort_order",{ascending:true});
+  if(error){console.error("Menu database load failed",error);toast("Menu database not ready. Run the supplied SQL setup first.");return;}
+  CUSTOM_MENUS=(data||[]).map(r=>({id:r.id,label:r.label,parent:r.parent_id||null,route:r.route||"dashboard",icon:r.icon||"📁",order:r.sort_order||0}));
+}
+async function writeCustomMenus(items){
+  if(!SB || !HAS_SESSION) throw new Error("Supabase session is required");
+  const rows=items.map((m,i)=>({id:m.id,label:m.label,parent_id:m.parent||null,route:m.route||"dashboard",icon:m.icon||"📁",sort_order:i}));
+  if(rows.length){const {error}=await SB.from("gpe_menu_items").upsert(rows,{onConflict:"id"});if(error)throw error;}
+  CUSTOM_MENUS=items.map((m,i)=>({...m,order:i}));
+}
+function menuRouteOptions(){return [["dashboard","Dashboard"],["projects","Projects"],["banks","Bank Accounts"],["cash","Cash Accounts"],["officeExpense","Company / Office Expense"],["employeeAdvance","Employee Advance"],["transactions","Transactions"],["profit","Profit"],["reports","Reports"],["settings","Settings"],["users","User Management"]]}
+function customSidebarHtml(){const all=readCustomMenus().sort((a,b)=>(a.order||0)-(b.order||0));return all.filter(m=>!m.parent).map(m=>{const kids=all.filter(x=>x.parent===m.id);return `<div class="nav-item" data-nav="${m.route||'dashboard'}" style="padding-left:18px"><span class="ic">${m.icon||'📁'}</span><span>${escapeHtml(m.label)}</span></div>${kids.map(k=>`<div class="nav-item" data-nav="${k.route||m.route||'dashboard'}" style="padding-left:38px"><span class="ic">↳</span><span>${escapeHtml(k.label)}</span></div>`).join('')}`}).join('')}
+function escapeHtml(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function menuManagerHtml(){if(!isAdmin())return '';const menus=readCustomMenus();return `<div class="card" style="margin-top:16px"><h3 style="margin-top:0">Menu Management</h3><p class="hint">Create main menus and nested submenus, edit labels/routes, reorder, or remove entries. Menus are saved to the shared Supabase database for signed-in users.</p><div class="grid grid-2"><div class="field"><label>Menu name</label><input id="menuNameInput" placeholder="e.g. Inventory"></div><div class="field"><label>Menu type</label><select id="menuParentInput"><option value="">Main Menu</option>${menus.filter(x=>!x.parent).map(x=>`<option value="${x.id}">Submenu under: ${escapeHtml(x.label)}</option>`).join('')}</select></div><div class="field"><label>Open existing page</label><select id="menuRouteInput">${menuRouteOptions().map(x=>`<option value="${x[0]}">${x[1]}</option>`).join('')}</select></div><div class="field"><label>Icon (emoji)</label><input id="menuIconInput" value="📁" maxlength="8"></div></div><button class="btn btn-primary btn-sm" id="btnAddCustomMenu">+ Add Menu</button><div style="margin-top:14px;display:grid;gap:8px">${menus.map(m=>`<div class="card" style="padding:12px;box-shadow:none"><div class="grid grid-2"><div class="field"><label>${m.parent?'Submenu':'Main Menu'} label</label><input data-menu-label="${m.id}" value="${escapeHtml(m.label)}"></div><div class="field"><label>Route</label><select data-menu-route="${m.id}">${menuRouteOptions().map(x=>`<option value="${x[0]}" ${m.route===x[0]?'selected':''}>${x[1]}</option>`).join('')}</select></div></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-sm" data-menu-save="${m.id}">Save</button><button class="btn btn-sm" data-menu-up="${m.id}">↑</button><button class="btn btn-sm" data-menu-down="${m.id}">↓</button><button class="btn btn-danger btn-sm" data-menu-delete="${m.id}">Delete</button></div></div>`).join('')}</div></div>`}
 function sidebar(){
   return `
   <div class="sidebar ${SIDEBAR_OPEN?'open':''}" id="sidebarEl">
@@ -1463,6 +1484,7 @@ function sidebar(){
       ${navItem("reports","📈",L('nav_reports'))}
       ${navItem("settings","⚙️",L('nav_settings'))}
       ${isAdmin()? navItem("users","👤",L('nav_users')) : ""}
+      ${customSidebarHtml()}
     </div>
     <div class="user-badge">
       <div class="ub-name">${currentUser()? currentUser().username : ""}</div>
@@ -2222,6 +2244,7 @@ function pageSettings(){
       </div>
     </div>
   </div>
+  ${menuManagerHtml()}
   `;
 }
 function categoryListHtml(kind){
@@ -2974,6 +2997,12 @@ function bindGlobalEvents(){
       await refreshAndRender();
     });
   });
+
+  const addCustomMenu=document.getElementById("btnAddCustomMenu");
+  if(addCustomMenu) addCustomMenu.onclick=async()=>{if(!isAdmin())return;const label=document.getElementById("menuNameInput").value.trim();if(!label){toast("Enter a menu name");return}const list=readCustomMenus();const parent=document.getElementById("menuParentInput").value;list.push({id:crypto.randomUUID(),label,parent:parent||null,route:document.getElementById("menuRouteInput").value,icon:document.getElementById("menuIconInput").value.trim()||"📁",order:list.length});try{await writeCustomMenus(list);render();toast("Menu saved to database")}catch(e){console.error(e);toast("Menu save failed. Check SQL/RLS setup.")}};
+  document.querySelectorAll("[data-menu-save]").forEach(btn=>btn.onclick=async()=>{const list=readCustomMenus(),m=list.find(x=>x.id===btn.dataset.menuSave);if(!m)return;m.label=document.querySelector(`[data-menu-label="${m.id}"]`).value.trim()||m.label;m.route=document.querySelector(`[data-menu-route="${m.id}"]`).value;try{await writeCustomMenus(list);render();toast("Menu updated in database")}catch(e){console.error(e);toast("Menu update failed")}});
+  document.querySelectorAll("[data-menu-delete]").forEach(btn=>btn.onclick=async()=>{const id=btn.dataset.menuDelete;let list=readCustomMenus();const ids=[id,...list.filter(x=>x.parent===id).map(x=>x.id)];try{const {error}=await SB.from("gpe_menu_items").delete().in("id",ids);if(error)throw error;CUSTOM_MENUS=list.filter(x=>!ids.includes(x.id));render();toast("Menu deleted from database")}catch(e){console.error(e);toast("Menu delete failed")}});
+  ["up","down"].forEach(dir=>document.querySelectorAll(`[data-menu-${dir}]`).forEach(btn=>btn.onclick=async()=>{const list=readCustomMenus(),idx=list.findIndex(x=>x.id===btn.dataset[`menu${dir[0].toUpperCase()+dir.slice(1)}`]);if(idx<0)return;const parent=list[idx].parent;const siblings=list.map((x,i)=>({x,i})).filter(o=>o.x.parent===parent).map(o=>o.i);const pos=siblings.indexOf(idx),next=siblings[pos+(dir==="up"?-1:1)];if(next===undefined)return;[list[idx],list[next]]=[list[next],list[idx]];try{await writeCustomMenus(list);render()}catch(e){console.error(e);toast("Menu reorder failed")}}));
 
   /* export snapshot */
   const doExport = ()=>{
