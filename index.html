@@ -2089,7 +2089,7 @@ function pageTransactions(){
     <select id="fProject">
       <option value="">${L('all_projects')}</option>
       <option value="__company__" ${FILTERS.projectId==='__company__'?'selected':''}>${L('general_company')}</option>
-      ${DB.projects.map(p=>`<option value="${p.id}" ${FILTERS.projectId===p.id?'selected':''}>${p.name}</option>`).join("")}
+      ${DB.projects.slice().sort((a,b)=>(Number(a.projectCode)||0)-(Number(b.projectCode)||0)).map(p=>`<option value="${p.id}" ${FILTERS.projectId===p.id?'selected':''}>${projectCodeLabel(p)} · ${p.name}${p.client?` · ${p.client}`:""}</option>`).join("")}
     </select>
     <select id="fAccType"><option value="">${L('all_accounts')}</option><option value="bank" ${FILTERS.accountType==='bank'?'selected':''}>${L('bank_label')}</option><option value="cash" ${FILTERS.accountType==='cash'?'selected':''}>${L('cash_label')}</option></select>
     <select id="fSortDate" title="${L('transaction_sort_label')}">
@@ -2563,7 +2563,7 @@ function formTransaction(existing, presets={}){
     function refreshReceiverOptions(){
       const prevVal = projectSel.options.length? projectSel.value : initialReceiverValue;
       let html = `<option value="">${L('general_company')}</option>`;
-      html += DB.projects.map(p=>`<option value="${p.id}">${p.name}</option>`).join("");
+      html += DB.projects.slice().sort((a,b)=>(Number(a.projectCode)||0)-(Number(b.projectCode)||0)).map(p=>`<option value="${p.id}">${projectCodeLabel(p)} · ${p.name}${p.client?` · ${p.client}`:""}</option>`).join("");
       if(currentType==='withdrawal'){
         html += DB.cash.map(c=>`<option value="cash:${c.id}">💵 ${c.name}</option>`).join("");
       }
