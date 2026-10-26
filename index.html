@@ -401,6 +401,60 @@ thead th{background:rgba(228,241,238,.72);backdrop-filter:blur(12px)}
 @media(prefers-reduced-motion:reduce){.card,.proj-card,.stat-card,.nav-item,button,.btn{transition:none!important}}
 @media(max-width:700px){.card,.proj-card,.table-wrap,.stat-card,.modal-card,.panel,.settings-card{border-radius:15px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}}
 
+/* ===== Glassy Sidebar V3: floating translucent navigation ===== */
+:root{--sidebar-glass:rgba(8,49,59,.82);--sidebar-glass-edge:rgba(222,255,248,.18);--sidebar-glass-glow:rgba(54,211,178,.12)}
+#app{gap:0}
+.sidebar{
+  margin:12px 0 12px 12px;
+  width:258px;height:calc(100vh - 24px);top:12px;
+  align-self:flex-start;position:sticky;flex-shrink:0;
+  border:1px solid var(--sidebar-glass-edge);border-radius:24px;
+  background:linear-gradient(155deg,rgba(17,87,97,.90) 0%,rgba(7,42,53,.88) 52%,rgba(8,32,46,.92) 100%);
+  -webkit-backdrop-filter:blur(28px) saturate(160%);backdrop-filter:blur(28px) saturate(160%);
+  box-shadow:0 18px 48px rgba(5,31,41,.20),inset 0 1px 0 rgba(255,255,255,.12);
+  overflow-x:hidden;scrollbar-width:thin;scrollbar-color:rgba(195,241,231,.24) transparent;
+  transition:width .28s ease,box-shadow .28s ease,background .28s ease;
+}
+.sidebar:before{content:"";position:absolute;pointer-events:none;inset:0;border-radius:inherit;background:radial-gradient(ellipse at 0% 0%,rgba(105,244,207,.13),transparent 42%),radial-gradient(ellipse at 100% 72%,rgba(89,153,255,.10),transparent 40%);}
+.sidebar>*{position:relative;z-index:1}
+.brand{padding:23px 18px 18px;border-bottom:1px solid rgba(255,255,255,.12)}
+.brand-mark{filter:drop-shadow(0 5px 12px rgba(0,0,0,.18))}
+.brand-text .name{letter-spacing:.1px}
+.nav{padding:12px 9px 18px}
+.nav-group-label{color:rgba(187,225,224,.64);font-size:10px;letter-spacing:1.35px;padding:15px 13px 7px}
+.nav-item{position:relative;isolation:isolate;gap:12px;padding:11px 13px;margin:4px 2px;border:1px solid transparent;border-radius:14px;color:rgba(235,250,248,.82);font-size:13.5px;transition:background .22s ease,color .22s ease,transform .22s ease,border-color .22s ease,box-shadow .22s ease}
+.nav-item:before{content:"";position:absolute;z-index:-1;inset:0;border-radius:inherit;background:linear-gradient(115deg,rgba(255,255,255,.11),rgba(255,255,255,.025));opacity:0;transition:opacity .22s ease}
+.nav-item:hover{transform:translateX(3px);background:rgba(226,255,250,.075);border-color:rgba(222,255,248,.10);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.nav-item:hover:before{opacity:1}
+.nav-item .ic{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;flex:0 0 22px;font-size:16px;filter:drop-shadow(0 2px 5px rgba(0,0,0,.14))}
+.nav-item.active{background:linear-gradient(115deg,rgba(62,224,177,.23),rgba(122,211,160,.10) 65%,rgba(255,255,255,.055));border-color:rgba(139,255,218,.22);box-shadow:inset 3px 0 #8ce8b4,0 7px 20px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.09);color:#fff}
+.nav-item.active:after{content:"";position:absolute;right:11px;top:50%;width:5px;height:5px;border-radius:50%;background:#a5f3d1;box-shadow:0 0 10px rgba(165,243,209,.85);transform:translateY(-50%)}
+.user-badge{margin:8px 10px 0;padding:15px 11px;border:1px solid rgba(255,255,255,.12);border-radius:17px;background:linear-gradient(135deg,rgba(255,255,255,.085),rgba(255,255,255,.025));box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+.user-badge .ub-name{overflow-wrap:anywhere}
+.user-badge .ub-role{color:#a5f3d1}
+.user-badge #btnLogout{border-radius:11px!important;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.sidebar-foot{margin-top:10px;padding:14px 15px;color:rgba(191,226,224,.52);border-top:1px solid rgba(255,255,255,.10);font-size:10.5px}
+/* Desktop sidebar collapse control */
+.sidebar-collapse-btn{margin-left:auto;flex:0 0 30px;width:30px;height:30px;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.18);border-radius:10px;background:rgba(255,255,255,.08);color:#eafffa;font-size:17px;line-height:1;cursor:pointer;transition:background .2s,transform .2s}
+.sidebar-collapse-btn:hover{background:rgba(255,255,255,.16);transform:scale(1.04)}
+#app.desktop-sidebar-collapsed .sidebar{width:78px}
+#app.desktop-sidebar-collapsed .brand{padding:20px 12px;justify-content:center;flex-wrap:wrap}
+#app.desktop-sidebar-collapsed .brand-text,#app.desktop-sidebar-collapsed .nav-group-label,#app.desktop-sidebar-collapsed .nav-item .nav-label,#app.desktop-sidebar-collapsed .user-badge .ub-name,#app.desktop-sidebar-collapsed .user-badge .ub-role,#app.desktop-sidebar-collapsed .sidebar-foot{display:none}
+#app.desktop-sidebar-collapsed .nav{padding:12px 8px}
+#app.desktop-sidebar-collapsed .nav-item{justify-content:center;padding:11px 8px;margin:5px 0;font-size:0}
+#app.desktop-sidebar-collapsed .nav-item .ic{margin:0}
+#app.desktop-sidebar-collapsed .nav-item.active:after{right:5px}
+#app.desktop-sidebar-collapsed .user-badge{margin:8px 5px;padding:10px 3px;text-align:center}
+#app.desktop-sidebar-collapsed .sidebar-collapse-btn{margin:2px auto 0}
+@media(max-width:700px){.sidebar-collapse-btn{display:none!important}#app.desktop-sidebar-collapsed .sidebar{width:min(84vw,300px)}#app.desktop-sidebar-collapsed .brand-text,#app.desktop-sidebar-collapsed .nav-group-label,#app.desktop-sidebar-collapsed .nav-item .nav-label,#app.desktop-sidebar-collapsed .user-badge .ub-name,#app.desktop-sidebar-collapsed .user-badge .ub-role,#app.desktop-sidebar-collapsed .sidebar-foot{display:initial}#app.desktop-sidebar-collapsed .nav-item{justify-content:flex-start;font-size:13.5px}}
+.main{min-width:0}
+@media(max-width:960px){
+  .sidebar{position:fixed;left:0;top:0;margin:10px;height:calc(100dvh - 20px);width:min(84vw,300px);max-width:none;z-index:50;transform:translateX(calc(-100% - 16px));transition:transform .28s cubic-bezier(.2,.8,.2,1);border-radius:24px}
+  .sidebar.open{transform:translateX(0);box-shadow:0 24px 70px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.12)}
+  .sidebar-overlay{background:rgba(3,16,22,.50);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+}
+@media(prefers-reduced-motion:reduce){.sidebar,.nav-item,.nav-item:before{transition:none!important}}
+
 </style>
 <style id="progress-toast-style">
 #progressToast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%) translateY(15px);background:#111827;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;box-shadow:0 8px 25px rgba(0,0,0,.18);opacity:0;pointer-events:none;transition:opacity .2s ease,transform .2s ease;z-index:99999;white-space:nowrap;}
@@ -1068,6 +1122,7 @@ function stampUpdated(obj){
 /* ---------------- Router / State ---------------- */
 let ROUTE = {page:"dashboard", id:null};
 let SIDEBAR_OPEN = false;
+let SIDEBAR_COLLAPSED = false;
 let FILTERS = { type:"", scope:"", projectId:"", accountType:"", accountId:"", from:"", to:"", date:"", q:"", sortDate:"desc" };
 
 function navigate(page, id=null){
@@ -1259,7 +1314,7 @@ function render(){
     return;
   }
   app.innerHTML = `
-    <div id="app">
+    <div id="app" class="${SIDEBAR_COLLAPSED?'desktop-sidebar-collapsed':''}">
       ${sidebar()}
       <div class="sidebar-overlay ${SIDEBAR_OPEN?'show':''}" id="sidebarOverlay"></div>
       <div class="main">
@@ -1435,7 +1490,7 @@ function bindLoginEvents(){
 
 function navItem(page, icon, label){
   const active = ROUTE.page===page;
-  return `<div class="nav-item ${active?'active':''}" data-nav="${page}"><span class="ic">${icon}</span><span>${label}</span></div>`;
+  return `<div class="nav-item ${active?'active':''}" data-nav="${page}"><span class="ic">${icon}</span><span class="nav-label">${label}</span></div>`;
 }
 
 function sidebar(){
@@ -1447,6 +1502,7 @@ function sidebar(){
         <div class="name">${DB.company.name}</div>
         <div class="tag">${(DB.company.tagline||"").toUpperCase()}</div>
       </div>
+      <button class="sidebar-collapse-btn" id="btnSidebarCollapse" type="button" title="Collapse sidebar" aria-label="Collapse sidebar">${SIDEBAR_COLLAPSED?'›':'‹'}</button>
     </div>
     <div class="nav">
       <div class="nav-group-label">${L('nav_group_summary')}</div>
@@ -1469,7 +1525,7 @@ function sidebar(){
       <div class="ub-role">${isAdmin()? L('role_admin') : L('role_user')}</div>
       <button class="btn btn-sm" id="btnLogout" style="margin-top:8px; width:100%; justify-content:center; background:rgba(255,255,255,0.06); color:#eaf3f2; border-color:rgba(255,255,255,0.18);">${L('auth_logout')}</button>
     </div>
-    <div class="sidebar-foot">© ${new Date().getFullYear()} GPE Ltd — ${L('sidebar_foot')}</div>
+    <div class="sidebar-foot">© ${new Date().getFullYear()} GPE Ltd</div>
   </div>`;
 }
 
@@ -2748,6 +2804,8 @@ function bindGlobalEvents(){
     el.addEventListener("click", ()=> navigate(el.dataset.nav, el.dataset.id));
   });
 
+  const collapseBtn = document.getElementById("btnSidebarCollapse");
+  if(collapseBtn) collapseBtn.onclick = ()=>{ SIDEBAR_COLLAPSED = !SIDEBAR_COLLAPSED; render(); };
   const menuToggle = document.getElementById("btnMenuToggle");
   if(menuToggle) menuToggle.onclick = ()=>{ SIDEBAR_OPEN = !SIDEBAR_OPEN; render(); };
   const overlay = document.getElementById("sidebarOverlay");
